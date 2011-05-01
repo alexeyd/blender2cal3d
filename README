@@ -1,0 +1,4 @@
+  The purpose of this project is to update blender2cal3d script, so that it can
+work with the latest Blender 2.5x releases. As a starting point blender2cal3d.py 
+for blender 2.49a is used (afaik it's the latest script modification).
+
