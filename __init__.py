@@ -38,6 +38,10 @@ from bpy.props import BoolProperty,        \
 import io_utils
 from io_utils import ExportHelper, ImportHelper
 
+import mathutils
+
+import os.path
+
 
 class ExportCal3D(bpy.types.Operator, ExportHelper):
 	'''Save Cal3d Files'''
@@ -88,7 +92,35 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 
 	def execute(self, context):
 		from . import export_mesh
-		return {'FINISHED'}
+
+		cal3d_dirname = os.path.dirname(self.filepath)
+
+		cal3d_meshes = []
+		base_translation = mathutils.Vector((0.0, 0.0, 0.0))
+		base_matrix = mathutils.Euler((self.base_rotation[0],             \
+		                               self.base_rotation[1],             \
+		                               self.base_rotation[2])).to_matrix()
+
+		try:
+			for obj in context.selected_objects:
+				if obj.type == "MESH":
+					cal3d_meshes.append(export_mesh.create_cal3d_mesh(obj, obj.data,     \
+					                                                  base_matrix,       \
+					                                                  base_translation, 900))
+		except RuntimeError as e:
+			print("###### ERROR DURING MESH EXPORT ######")
+			print(e)
+			return {"FINISHED"}
+
+		for cal3d_mesh in cal3d_meshes:
+			mesh_filename = self.filename_prefix + cal3d_mesh.name + ".xmf"
+			mesh_filepath = os.path.join(cal3d_dirname, mesh_filename)
+
+			cal3d_mesh_file = open(mesh_filename, "wt")
+			cal3d_mesh_file.write(cal3d_mesh.to_cal3d_xml())
+			cal3d_mesh_file.close()
+
+		return {"FINISHED"}
 
 
 def menu_func_export(self, context):

@@ -117,9 +117,9 @@ class Face:
 
 
 	def to_cal3d_xml(self):
-		return "    <FACE VERTEXID=\"%i %i %i\"/>\n".format(self.vertex1.index,
-		                                                    self.vertex2.index,
-		                                                    self.vertex3.index)
+		return "    <FACE VERTEXID=\"{0} {1} {2}\"/>\n".format(self.vertex1.index,
+		                                                       self.vertex2.index,
+		                                                       self.vertex3.index)
 
 
 
@@ -149,7 +149,6 @@ class SubMesh:
 		                                                                             texcoords_num)
 
 		s += "".join(map(Vertex.to_cal3d_xml, self.vertices))
-		s += "".join(map(Spring.to_cal3d_xml, self.springs))
 		s += "".join(map(Face.to_cal3d_xml, self.faces))
 		s += "  </SUBMESH>\n"
 		return s
