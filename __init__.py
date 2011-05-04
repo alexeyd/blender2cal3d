@@ -92,10 +92,13 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 
 	def execute(self, context):
 		from . import export_mesh
+		from . import export_armature
 
 		cal3d_dirname = os.path.dirname(self.filepath)
 
 		cal3d_meshes = []
+		cal3d_skeletons = []
+
 		base_translation = mathutils.Vector((0.0, 0.0, 0.0))
 		base_matrix = mathutils.Euler((self.base_rotation[0],             \
 		                               self.base_rotation[1],             \
@@ -107,8 +110,13 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 					cal3d_meshes.append(export_mesh.create_cal3d_mesh(obj, obj.data,     \
 					                                                  base_matrix,       \
 					                                                  base_translation, 900))
+				elif obj.type == "ARMATURE":
+					cal3d_skeletons.append(export_armature.create_cal3d_skeleton(obj, obj.data, \
+					                       base_matrix, base_translation, 900))
+					if len(cal3d_skeletons) > 1:
+						raise RuntimeError("Only one armature is supported")
 		except RuntimeError as e:
-			print("###### ERROR DURING MESH EXPORT ######")
+			print("###### ERROR DURING EXPORT ######")
 			print(e)
 			return {"FINISHED"}
 
@@ -119,6 +127,14 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 			cal3d_mesh_file = open(mesh_filename, "wt")
 			cal3d_mesh_file.write(cal3d_mesh.to_cal3d_xml())
 			cal3d_mesh_file.close()
+
+		for cal3d_skeleton in cal3d_skeletons:
+			skeleton_filename = self.filename_prefix + cal3d_skeleton.name + ".xsf"
+			skeleton_filepath = os.path.join(cal3d_dirname, skeleton_filename)
+
+			cal3d_skeleton_file = open(skeleton_filename, "wt")
+			cal3d_skeleton_file.write(cal3d_skeleton.to_cal3d_xml())
+			cal3d_skeleton_file.close()
 
 		return {"FINISHED"}
 
