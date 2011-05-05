@@ -5,7 +5,8 @@ bl_info = \
             "Chris Montijin, "            \
             "Damien McGinnes, "           \
             "David Young, "               \
-            "Alexey Dorokhov",
+            "Alexey Dorokhov, "           \
+			"Matthias Ferch",
   "blender": (2, 5, 7),
   "api": 35622,
   "location": "File > Export > Cal3D (.cfg)",
