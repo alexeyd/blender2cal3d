@@ -29,10 +29,7 @@ def create_cal3d_mesh(mesh_obj, mesh_data,   \
 		cal3d_vertex1 = None
 		cal3d_vertex2 = None
 		cal3d_vertex3 = None
-
-		# make life a bit easier
-		if len(face.vertices) != 3:
-			raise RuntimeError("Only triangle faces are supported")
+		cal3d_vertex4 = None
 
 		for vertex_index in face.vertices:
 			cal3d_vertex = None
@@ -61,9 +58,12 @@ def create_cal3d_mesh(mesh_obj, mesh_data,   \
 				cal3d_vertex2 = cal3d_vertex
 			elif not cal3d_vertex3:
 				cal3d_vertex3 = cal3d_vertex
+			elif not cal3d_vertex4:
+				cal3d_vertex4 = cal3d_vertex
 
 		cal3d_face = mesh_classes.Face(cal3d_submesh, cal3d_vertex1, \
-		                               cal3d_vertex2, cal3d_vertex3)
+		                               cal3d_vertex2, cal3d_vertex3, \
+									   cal3d_vertex4)
 		cal3d_submesh.faces.append(cal3d_face)
 
 	return cal3d_mesh

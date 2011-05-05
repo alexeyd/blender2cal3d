@@ -125,7 +125,7 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 			mesh_filename = self.filename_prefix + cal3d_mesh.name + ".xmf"
 			mesh_filepath = os.path.join(cal3d_dirname, mesh_filename)
 
-			cal3d_mesh_file = open(mesh_filename, "wt")
+			cal3d_mesh_file = open(mesh_filepath, "wt")
 			cal3d_mesh_file.write(cal3d_mesh.to_cal3d_xml())
 			cal3d_mesh_file.close()
 
@@ -133,9 +133,21 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 			skeleton_filename = self.filename_prefix + cal3d_skeleton.name + ".xsf"
 			skeleton_filepath = os.path.join(cal3d_dirname, skeleton_filename)
 
-			cal3d_skeleton_file = open(skeleton_filename, "wt")
+			cal3d_skeleton_file = open(skeleton_filepath, "wt")
 			cal3d_skeleton_file.write(cal3d_skeleton.to_cal3d_xml())
 			cal3d_skeleton_file.close()
+
+		cal3d_cfg_file = open(self.filepath, "wt")
+
+		for cal3d_skeleton in cal3d_skeletons:
+			skeleton_filename = self.filename_prefix + cal3d_skeleton.name + ".xsf"
+			cal3d_cfg_file.write("skeleton={0}\n".format(skeleton_filename))
+
+		for cal3d_mesh in cal3d_meshes:
+			mesh_filename = self.filename_prefix + cal3d_mesh.name + ".xmf"
+			cal3d_cfg_file.write("mesh={0}\n".format(mesh_filename))
+
+		cal3d_cfg_file.close()
 
 		return {"FINISHED"}
 
