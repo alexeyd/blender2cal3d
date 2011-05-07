@@ -55,17 +55,33 @@ class Bone:
  
 
 	def to_cal3d_xml(self):
-		s = "  <BONE ID=\"{0}\" NAME=\"{1}\" NUMCHILDS=\"{2}\">\n".format(self.id, self.name, len(self.children))
-		s += "	<TRANSLATION>{0} {1} {2}</TRANSLATION>\n".format(self.loc[0], self.loc[1], self.loc[2])
-		s += "	<ROTATION>{0} {1} {2} {3}</ROTATION>\n".format(self.quat.x, self.quat.y, self.quat.z, self.quat.w)
-		s += "	<LOCALTRANSLATION>{0} {1} {2}</LOCALTRANSLATION>\n".format(self.lloc[0], self.lloc[1], self.lloc[2])
-		s += "	<LOCALROTATION>{0} {1} {2} {3}</LOCALROTATION>\n".format(self.lquat.x, self.lquat.y, self.lquat.z, self.lquat.w)
+		s = "  <BONE ID=\"{0}\" NAME=\"{1}\" NUMCHILDS=\"{2}\">\n".format(self.id,
+		                                                                  self.name, 
+		                                                                  len(self.children))
+
+		s += "	<TRANSLATION>{0} {1} {2}</TRANSLATION>\n".format(self.loc[0],
+		                                                         self.loc[1],
+		                                                         self.loc[2])
+
+		s += "	<ROTATION>{0} {1} {2} {3}</ROTATION>\n".format(self.quat.x,
+		                                                       self.quat.y,
+		                                                       self.quat.z,
+		                                                       self.quat.w)
+
+		s += "	<LOCALTRANSLATION>{0} {1} {2}</LOCALTRANSLATION>\n".format(self.lloc[0],
+		                                                                   self.lloc[1],
+		                                                                   self.lloc[2])
+
+		s += "	<LOCALROTATION>{0} {1} {2} {3}</LOCALROTATION>\n".format(self.lquat.x, 
+		                                                                 self.lquat.y,
+		                                                                 self.lquat.z,
+		                                                                 self.lquat.w)
 		if self.parent:
 			s += "	<PARENTID>{0}</PARENTID>\n".format(self.parent.id)
 		else:
-			s += "	<PARENTID>%i</PARENTID>\n".format(-1)
-		s += "".join(map(lambda bone: "	<CHILDID>%i</CHILDID>\n".format(bone.id),
-			self.children))
+			s += "	<PARENTID>{0}</PARENTID>\n".format(-1)
+		s += "".join(map(lambda bone: "	<CHILDID>{0}</CHILDID>\n".format(bone.id),
+		             self.children))
 		s += "  </BONE>\n"
 		return s
 

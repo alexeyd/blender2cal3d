@@ -1,9 +1,14 @@
 import bpy
 import mathutils
+
 from . import mesh_classes
+from . import armature_classes
+from .mesh_classes import *
+from .armature_classes import *
 
 
 def create_cal3d_mesh(mesh_obj, mesh_data,   \
+                      cal3d_skeleton,        \
                       base_matrix_orig,      \
                       base_translation_orig, \
                       xml_version):
@@ -13,7 +18,7 @@ def create_cal3d_mesh(mesh_obj, mesh_data,   \
 	base_matrix = base_matrix_orig.copy()
 	base_matrix.invert()
 
-	cal3d_mesh = mesh_classes.Mesh(mesh_obj.name, xml_version)
+	cal3d_mesh = Mesh(mesh_obj.name, xml_version)
 
 	matrix = mesh_obj.matrix_world.copy()
 	matrix = matrix.to_4x4()
@@ -22,7 +27,7 @@ def create_cal3d_mesh(mesh_obj, mesh_data,   \
 
 	# for each material of the mesh a separate submesh should be created
 	# as there're no materials, one submesh will do for now
-	cal3d_submesh = mesh_classes.SubMesh(cal3d_mesh, len(cal3d_mesh.submeshes), -1)
+	cal3d_submesh = SubMesh(cal3d_mesh, len(cal3d_mesh.submeshes), -1)
 	cal3d_mesh.submeshes.append(cal3d_submesh)
 
 	for face in mesh_data.faces:
@@ -48,8 +53,8 @@ def create_cal3d_mesh(mesh_obj, mesh_data,   \
 				coord += base_translation
 				coord = coord * base_matrix
 
-				cal3d_vertex = mesh_classes.Vertex(cal3d_submesh, vertex_index, \
-				                                   coord, normal)
+				cal3d_vertex = Vertex(cal3d_submesh, vertex_index, \
+				                      coord, normal)
 				cal3d_submesh.vertices.append(cal3d_vertex)
 
 			if not cal3d_vertex1:
@@ -61,9 +66,9 @@ def create_cal3d_mesh(mesh_obj, mesh_data,   \
 			elif not cal3d_vertex4:
 				cal3d_vertex4 = cal3d_vertex
 
-		cal3d_face = mesh_classes.Face(cal3d_submesh, cal3d_vertex1, \
-		                               cal3d_vertex2, cal3d_vertex3, \
-									   cal3d_vertex4)
+		cal3d_face = Face(cal3d_submesh, cal3d_vertex1, \
+		                  cal3d_vertex2, cal3d_vertex3, \
+		                  cal3d_vertex4)
 		cal3d_submesh.faces.append(cal3d_face)
 
 	return cal3d_mesh

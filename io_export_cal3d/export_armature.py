@@ -5,6 +5,7 @@ import bpy
 from mathutils import *
 
 from . import armature_classes
+from .armature_classes import *
 
 
 def treat_bone(b, base_matrix, arm_matrix, parent, skeleton):
@@ -52,8 +53,8 @@ def treat_bone(b, base_matrix, arm_matrix, parent, skeleton):
 
 #			interm_loc *= SCALE
 			interm_quat = Quaternion()
-			interm_bone = armature_classes.Bone(skeleton, parent, name+"_interm",
-			                                    interm_loc, interm_quat)
+			interm_bone = Bone(skeleton, parent, name+"_interm",
+			                   interm_loc, interm_quat)
 			interm_bone.child_loc = bone_head
 			parent = interm_bone
 		else:
@@ -83,7 +84,7 @@ def treat_bone(b, base_matrix, arm_matrix, parent, skeleton):
 
 #	loc *= SCALE
 	quat = local_rot_mat.to_quaternion()
-	bone = armature_classes.Bone(skeleton, parent, name, loc, quat)
+	bone = Bone(skeleton, parent, name, loc, quat)
 
 	# if I got it right, root bone
 	# shouldn't have translation =>
@@ -111,14 +112,14 @@ def treat_bone(b, base_matrix, arm_matrix, parent, skeleton):
 		ender_loc = bone.child_loc.copy()
 #		ender_loc *= SCALE
 		ender_quat = Quaternion()
-		armature_classes.Bone(skeleton, bone, name+"_ender", ender_loc, ender_quat)
+		Bone(skeleton, bone, name+"_ender", ender_loc, ender_quat)
 
 
 def create_cal3d_skeleton(arm_obj, arm_data,     \
                           base_matrix_orig,      \
                           base_translation_orig, \
                           xml_version):
-	skeleton = armature_classes.Skeleton(arm_obj.name, xml_version)
+	skeleton = Skeleton(arm_obj.name, xml_version)
 
 	arm_matrix = arm_obj.matrix_world.copy() # XXX obj.getMatrix().copy()
 
