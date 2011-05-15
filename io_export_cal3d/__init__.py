@@ -69,7 +69,7 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 
 	shall_export_armature = BoolProperty(name="Export Armature",
 	                                     description="",
-	                                     default=False)
+	                                     default=True)
 
 	shall_export_animations = BoolProperty(name="Export Animations",
 	                                       description="",
@@ -94,6 +94,8 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 	def execute(self, context):
 		from . import export_mesh
 		from . import export_armature
+		from .export_armature import create_cal3d_skeleton
+		from .export_mesh import create_cal3d_mesh
 
 		cal3d_dirname = os.path.dirname(self.filepath)
 
@@ -101,9 +103,10 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 		cal3d_meshes = []
 
 		base_translation = mathutils.Vector((0.0, 0.0, 0.0))
-		base_matrix = mathutils.Euler((self.base_rotation[0],             \
-		                               self.base_rotation[1],             \
-		                               self.base_rotation[2])).to_matrix()
+		base_rotation = mathutils.Euler((self.base_rotation[0],             \
+		                                 self.base_rotation[1],             \
+		                                 self.base_rotation[2])).to_matrix()
+		base_scale = self.base_scale
 
 		# Export armatures
 		try:
@@ -113,9 +116,12 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 						if cal3d_skeleton:
 							raise RuntimeError("Only one armature is supported")
 
-						cal3d_skeleton = export_armature.create_cal3d_skeleton(obj, obj.data,         \
-						                                                       base_matrix,           \
-						                                                       base_translation, 900)
+						base_translation = obj.matrix_world.to_translation().copy()
+						base_translation = -base_translation
+						cal3d_skeleton = create_cal3d_skeleton(obj, obj.data,    \
+						                                       base_rotation,    \
+						                                       base_translation, \
+						                                       base_scale, 900)
 		except RuntimeError as e:
 			print("###### ERROR DURING ARMATURE EXPORT ######")
 			print(e)
@@ -126,10 +132,11 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 			if self.shall_export_meshes:
 				for obj in context.selected_objects:
 					if obj.type == "MESH":
-						cal3d_meshes.append(export_mesh.create_cal3d_mesh(obj, obj.data,          \
-						                                                  cal3d_skeleton,         \
-						                                                  base_matrix,            \
-						                                                  base_translation, 900))
+						cal3d_meshes.append(create_cal3d_mesh(obj, obj.data,    \
+						                                      cal3d_skeleton,   \
+						                                      base_rotation,    \
+						                                      base_translation, \
+						                                      base_scale, 900))
 		except RuntimeError as e:
 			print("###### ERROR DURING MESH EXPORT ######")
 			print(e)

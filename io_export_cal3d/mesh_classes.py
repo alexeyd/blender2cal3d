@@ -68,8 +68,8 @@ class Influence:
     
 	
 	def to_cal3d_xml(self):
-		return "      <INFLUENCE ID=\"%i\">%f</INFLUENCE>\n".format(self.bone_index, 
-		                                                            self.weight)
+		return "      <INFLUENCE ID=\"{0}\">{1}</INFLUENCE>\n".format(self.bone_index, 
+		                                                              self.weight)
 
 
 
@@ -100,7 +100,7 @@ class Vertex:
 		s += "".join(map(Map.to_cal3d_xml, self.maps))
 		s += "".join(map(Influence.to_cal3d_xml, self.influences))
 		if self.hasweight:
-			s += "      <PHYSIQUE>%f</PHYSIQUE>\n".format(self.weight)
+			s += "      <PHYSIQUE>{0}</PHYSIQUE>\n".format(self.weight)
 		s += "    </VERTEX>\n"
 		return s
 

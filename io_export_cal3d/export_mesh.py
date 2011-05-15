@@ -9,19 +9,24 @@ from .armature_classes import *
 
 def create_cal3d_mesh(mesh_obj, mesh_data,   \
                       cal3d_skeleton,        \
-                      base_matrix_orig,      \
+                      base_rotation_orig,    \
                       base_translation_orig, \
+                      base_scale,            \
                       xml_version):
 
 	base_translation = base_translation_orig.copy()
+	base_rotation = base_rotation_orig.copy()
 
-	base_matrix = base_matrix_orig.copy()
-	base_matrix.invert()
+	mesh_matrix = mesh_obj.matrix_world.copy()
+	mesh_rotation = mesh_matrix.to_3x3().copy()
+	mesh_translation = mesh_matrix.to_translation().copy()
+
+	total_rotation = mesh_rotation.copy()
+	total_rotation.rotate(base_rotation)
+
+	total_translation = base_translation + mesh_translation
 
 	cal3d_mesh = Mesh(mesh_obj.name, xml_version)
-
-	matrix = mesh_obj.matrix_world.copy()
-	matrix = matrix.to_4x4()
 
 	faces = mesh_data.faces
 
@@ -45,13 +50,11 @@ def create_cal3d_mesh(mesh_obj, mesh_data,   \
 
 			if not cal3d_vertex:
 				normal = mesh_data.vertices[vertex_index].normal.copy()
-				normal = normal * matrix.to_3x3()
-				normal = normal * base_matrix
+				normal.rotate(total_rotation)
 
 				coord = mesh_data.vertices[vertex_index].co.copy()
-				coord = coord * matrix
-				coord += base_translation
-				coord = coord * base_matrix
+				coord = (coord + total_translation) * base_scale
+				coord.rotate(total_rotation)
 
 				cal3d_vertex = Vertex(cal3d_submesh, vertex_index, \
 				                      coord, normal)

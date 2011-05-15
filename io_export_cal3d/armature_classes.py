@@ -20,42 +20,39 @@ class Skeleton:
 
 
 class Bone:
-	def __init__(self, skeleton, parent, name, loc, quat):
+	def __init__(self, skeleton, parent, name, loc, rot):
 		self.parent = parent
 		self.name = name
-		self.loc = loc.copy()
-		self.quat = quat.copy()
 		self.children = []
 		self.xml_version = skeleton.xml_version
 
-		# calculate absolute rotation matrix
-		matrix = quat.to_matrix()
-		if parent:
-			self.matrix = parent.matrix * matrix
-			parent.children.append(self)
-		else:
-			self.matrix = matrix.copy()
+		self.loc = loc.copy()
+		self.quat = rot.inverted().to_quaternion()
 
-		#calculate absolute translaton vector
+		# calculate absolute rotation matrix
+		self.matrix = rot.copy()
 		if parent:
-			self.abs_trans = parent.abs_trans + self.loc * parent.matrix # XXX parent.abs_trans + parent.matrix * self.loc
-		else:
-			self.abs_trans = self.loc
+			self.matrix.rotate(parent.matrix)
+			parent.children.append(self)
+
+		# calculate absolute translaton vector
+		self.abs_trans = loc.copy()
+		if parent:
+			self.abs_trans.rotate(parent.matrix)
+			self.abs_trans = self.abs_trans + parent.abs_trans
 		
 		# lloc and lquat are the model => bone space transformation 
-		m = self.matrix.copy()
-		m.invert()
-		self.lquat = m.to_quaternion()
-		self.lloc = (-self.abs_trans) * m # XXX m * (-self.abs_trans)
+		self.lquat = self.matrix.to_quaternion()
+		self.lloc = -self.abs_trans
 		
 		self.skeleton = skeleton
-		self.id = skeleton.next_bone_id
+		self.index = skeleton.next_bone_id
 		skeleton.next_bone_id += 1
 		skeleton.bones.append(self)
  
 
 	def to_cal3d_xml(self):
-		s = "  <BONE ID=\"{0}\" NAME=\"{1}\" NUMCHILDS=\"{2}\">\n".format(self.id,
+		s = "  <BONE ID=\"{0}\" NAME=\"{1}\" NUMCHILDS=\"{2}\">\n".format(self.index,
 		                                                                  self.name, 
 		                                                                  len(self.children))
 
@@ -77,10 +74,10 @@ class Bone:
 		                                                                 self.lquat.z,
 		                                                                 self.lquat.w)
 		if self.parent:
-			s += "	<PARENTID>{0}</PARENTID>\n".format(self.parent.id)
+			s += "	<PARENTID>{0}</PARENTID>\n".format(self.parent.index)
 		else:
 			s += "	<PARENTID>{0}</PARENTID>\n".format(-1)
-		s += "".join(map(lambda bone: "	<CHILDID>{0}</CHILDID>\n".format(bone.id),
+		s += "".join(map(lambda bone: "	<CHILDID>{0}</CHILDID>\n".format(bone.index),
 		             self.children))
 		s += "  </BONE>\n"
 		return s

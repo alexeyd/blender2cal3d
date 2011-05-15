@@ -8,7 +8,7 @@ from . import armature_classes
 from .armature_classes import *
 
 
-def treat_bone(b, base_matrix, arm_matrix, parent, skeleton):
+def treat_bone(b, scale, parent, skeleton):
 	# skip bones that start with _
 	# also skips children of that bone so be careful
 	if len(b.name) == 0:
@@ -19,118 +19,59 @@ def treat_bone(b, base_matrix, arm_matrix, parent, skeleton):
 
 	name = b.name
 
-	bone_head = b.head.copy() # XXX b.head['BONESPACE'].copy()
-	bone_tail = b.tail.copy() # XXX b.tail['BONESPACE'].copy()
-
-#alexeyd: will port later
-#	if not ROOT_TO_ZERO and not parent:
-#		bone_tail = bone_tail - bone_head
-#		bone_head = bone_head + \
-#					arm_matrix.to_quaternion()*get_armature_translation(scene)
-#		bone_tail = bone_tail + bone_head
+	bone_head = b.head.copy()
+	bone_tail = b.tail.copy()
 
 	if bone_head.length != 0: 
-#		if not ROOT_TO_ZERO and not parent:
-#			if base_matrix and arm_matrix:
-#				dummy_arm_matrix = arm_matrix.copy()
-#				dummy_arm_matrix.invert()
-#				dummy_base_matrix = base_matrix.copy()
-#				dummy_base_matrix.invert()
-#				result_matrix = dummy_base_matrix * dummy_arm_matrix
-#				tmp_quat = result_matrix.to_quaternion()
-#			else:
-#				tmp_quat = Quaternion()
-#
-#			tmp_loc = Vector([0.0,0.0,0.0])
-#			parent = Bone(skeleton, None, "service_root",
-#			              tmp_loc.copy(), tmp_quat.copy())
-#			parent.child_loc = Vector([0.0,0.0,0.0])
+		interm_loc = bone_head.copy() * scale
+		interm_rot = Matrix.Rotation(0.0, 3, "X")
+		interm_rot.identity()
 
-		# in this case create a service 
-		# bone between child and parent
-		if parent:
-			interm_loc = parent.child_loc.copy()
-
-#			interm_loc *= SCALE
-			interm_quat = Quaternion()
-			interm_bone = Bone(skeleton, parent, name+"_interm",
-			                   interm_loc, interm_quat)
-			interm_bone.child_loc = bone_head
-			parent = interm_bone
-		else:
-			bone_tail -= bone_head
-			bone_head -= bone_head
+		interm_bone = Bone(skeleton, parent, name+"_interm",
+		                   interm_loc, interm_rot)
+		parent = interm_bone
 
 
-	local_rot_mat = b.matrix # XXX b.matrix['BONESPACE'].to_quaternion()
+	loc = (bone_tail - bone_head) * scale
+	rot = b.matrix.copy()
+	bone = Bone(skeleton, parent, name, loc, rot)
 
-	# convert to cal3d rotation
-	local_rot_mat.invert()
-
-	if base_matrix and arm_matrix and not parent:
-		dummy_arm_matrix = arm_matrix.copy()
-		dummy_arm_matrix.invert()
-		dummy_base_matrix = base_matrix.copy()
-		dummy_base_matrix.invert()
-		dummy_base_matrix = dummy_base_matrix.to_4x4()
-		cal3d_base_matrix = dummy_base_matrix * dummy_arm_matrix
-		local_rot_mat = cal3d_base_matrix.to_3x3() * local_rot_mat
-
-	if parent:
-		loc = parent.child_loc.copy()
-	else:
-		loc = Vector([0.0,0.0,0.0])
-
-
-#	loc *= SCALE
-	quat = local_rot_mat.to_quaternion()
-	bone = Bone(skeleton, parent, name, loc, quat)
-
-	# if I got it right, root bone
-	# shouldn't have translation =>
-	# moving all translations one 
-	# bone forward
-	bone.child_loc = bone_tail - bone_head
-	bone_matrix = b.matrix.to_quaternion() # XXX b.matrix['BONESPACE'].to_quaternion()
-	bone.child_loc = bone.child_loc * bone_matrix # XXX bone_matrix * bone.child_loc
-
-	has_children = False
-	if len(b.children):
-		for child in b.children:
-			if len(child.name):
-				if child.name[0] != '_':
-					has_children = True
-					break
-	
-	if has_children:
-		for child in b.children:
-			treat_bone(child, base_matrix.copy(), arm_matrix.copy(), 
-			           bone, skeleton)
-	else:
-		# service bone for skeletons to look the 
-		# same both in Blender and cal3d
-		ender_loc = bone.child_loc.copy()
-#		ender_loc *= SCALE
-		ender_quat = Quaternion()
-		Bone(skeleton, bone, name+"_ender", ender_loc, ender_quat)
+	for child in b.children:
+		treat_bone(child, scale, bone, skeleton)
 
 
 def create_cal3d_skeleton(arm_obj, arm_data,     \
-                          base_matrix_orig,      \
+                          base_rotation_orig,    \
                           base_translation_orig, \
+                          base_scale,            \
                           xml_version):
 	skeleton = Skeleton(arm_obj.name, xml_version)
 
-	arm_matrix = arm_obj.matrix_world.copy() # XXX obj.getMatrix().copy()
+	arm_matrix = arm_obj.matrix_world.copy()
+	arm_translation = arm_matrix.to_translation()
+	arm_rotation = arm_matrix.to_3x3()
 
 	base_translation = base_translation_orig.copy()
-	base_matrix = base_matrix_orig.copy()
+	base_rotation = base_rotation_orig.copy()
+
+	total_rotation = arm_rotation.copy()
+	total_rotation.rotate(base_rotation)
+
+	total_translation = (base_translation + arm_translation) * base_scale
+
+	service_root = Bone(skeleton, None, "service_root",                 \
+	                    total_translation.copy(), total_rotation.copy())
+
+	root_bone = None
 
 	for bone in arm_data.bones.values():
 		if not bone.parent and bone.name[0] != "_":
-			treat_bone(bone, base_matrix.copy(), arm_matrix.copy(),
-			           None, skeleton)
-			break
+			if root_bone:
+				raise RuntimeError("Only one root bone is supported")
+			else:
+				root_bone = bone
+
+	treat_bone(root_bone, base_scale, service_root, skeleton)
 
 	return skeleton
 
