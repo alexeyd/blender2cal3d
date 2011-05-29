@@ -7,11 +7,11 @@ from .mesh_classes import *
 from .armature_classes import *
 
 
-def create_cal3d_mesh(mesh_obj, mesh_data,   \
-                      cal3d_skeleton,        \
-                      base_rotation_orig,    \
-                      base_translation_orig, \
-                      base_scale,            \
+def create_cal3d_mesh(mesh_obj, mesh_data,
+                      cal3d_skeleton,
+                      base_rotation_orig,
+                      base_translation_orig,
+                      base_scale,
                       xml_version):
 
 	base_translation = base_translation_orig.copy()
@@ -56,7 +56,7 @@ def create_cal3d_mesh(mesh_obj, mesh_data,   \
 				coord = (coord + total_translation) * base_scale
 				coord.rotate(total_rotation)
 
-				cal3d_vertex = Vertex(cal3d_submesh, vertex_index, \
+				cal3d_vertex = Vertex(cal3d_submesh, vertex_index,
 				                      coord, normal)
 				cal3d_submesh.vertices.append(cal3d_vertex)
 
@@ -69,8 +69,8 @@ def create_cal3d_mesh(mesh_obj, mesh_data,   \
 			elif not cal3d_vertex4:
 				cal3d_vertex4 = cal3d_vertex
 
-		cal3d_face = Face(cal3d_submesh, cal3d_vertex1, \
-		                  cal3d_vertex2, cal3d_vertex3, \
+		cal3d_face = Face(cal3d_submesh, cal3d_vertex1,
+		                  cal3d_vertex2, cal3d_vertex3,
 		                  cal3d_vertex4)
 		cal3d_submesh.faces.append(cal3d_face)
 

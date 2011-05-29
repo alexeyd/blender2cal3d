@@ -67,13 +67,10 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 	                                      description="",
 	                                      default=False)
 
-	shall_export_armature = BoolProperty(name="Export Armature",
+	shall_export_armature = BoolProperty(name="Export Armature/Animations",
 	                                     description="",
 	                                     default=True)
 
-	shall_export_animations = BoolProperty(name="Export Animations",
-	                                       description="",
-	                                       default=False)
 	
 	filename_prefix = StringProperty(name="Filename Prefix", 
 	                                 default="model_")
@@ -87,26 +84,30 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 	base_scale = FloatProperty(name="Base Scale",
 	                           default=1.0)
 
-	fps = IntProperty(name="FPS", default=25)
+	fps = FloatProperty(name="FPS", default=25.0)
 
 	path_mode = io_utils.path_reference_mode
 
 	def execute(self, context):
 		from . import export_mesh
 		from . import export_armature
+		from . import export_action
 		from .export_armature import create_cal3d_skeleton
 		from .export_mesh import create_cal3d_mesh
+		from .export_action import create_cal3d_animation
 
 		cal3d_dirname = os.path.dirname(self.filepath)
 
 		cal3d_skeleton = None
 		cal3d_meshes = []
+		cal3d_animations = []
 
 		base_translation = mathutils.Vector((0.0, 0.0, 0.0))
 		base_rotation = mathutils.Euler((self.base_rotation[0],             \
 		                                 self.base_rotation[1],             \
 		                                 self.base_rotation[2])).to_matrix()
 		base_scale = self.base_scale
+		fps = self.fps
 
 		# Export armatures
 		try:
@@ -143,6 +144,23 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 			return {"FINISHED"}
 
 
+		# Export animations
+		try:
+			if self.shall_export_armature:
+				for action in bpy.data.actions:
+					cal3d_animation = create_cal3d_animation(cal3d_skeleton,
+					                                         action, fps,
+					                                         base_scale, 900)
+					if cal3d_animation:
+						cal3d_animations.append(cal3d_animation)
+						
+		except RuntimeError as e:
+			print("###### ERROR DURING ACTION EXPORT ######")
+			print(e)
+			return {"FINISHED"}
+
+
+
 		if cal3d_skeleton:
 			skeleton_filename = self.filename_prefix + cal3d_skeleton.name + ".xsf"
 			skeleton_filepath = os.path.join(cal3d_dirname, skeleton_filename)
@@ -159,12 +177,24 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 			cal3d_mesh_file.write(cal3d_mesh.to_cal3d_xml())
 			cal3d_mesh_file.close()
 
+		for cal3d_animation in cal3d_animations:
+			animation_filename = self.filename_prefix + cal3d_animation.name + ".xaf"
+			animation_filepath = os.path.join(cal3d_dirname, animation_filename)
+
+			cal3d_animation_file = open(animation_filepath, "wt")
+			cal3d_animation_file.write(cal3d_animation.to_cal3d_xml())
+			cal3d_animation_file.close()
+
 
 		cal3d_cfg_file = open(self.filepath, "wt")
 
 		if cal3d_skeleton:
 			skeleton_filename = self.filename_prefix + cal3d_skeleton.name + ".xsf"
 			cal3d_cfg_file.write("skeleton={0}\n".format(skeleton_filename))
+
+		for cal3d_animation in cal3d_animations:
+			animation_filename = self.filename_prefix + cal3d_animation.name + ".xaf"
+			cal3d_cfg_file.write("animation={0}\n".format(animation_filename))
 
 		for cal3d_mesh in cal3d_meshes:
 			mesh_filename = self.filename_prefix + cal3d_mesh.name + ".xmf"

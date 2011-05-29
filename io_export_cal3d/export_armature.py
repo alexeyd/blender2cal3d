@@ -22,28 +22,35 @@ def treat_bone(b, scale, parent, skeleton):
 	bone_head = b.head.copy()
 	bone_tail = b.tail.copy()
 
+	# each blender bone is mapped to 2 cal3d bones:
+	# rotator (also head translation goes there) and translator
+	rotator_rot = b.matrix.copy()
+	rotator_loc = Vector([0.0, 0.0, 0.0])
+
 	if bone_head.length != 0: 
-		interm_loc = bone_head.copy() * scale
-		interm_rot = Matrix.Rotation(0.0, 3, "X")
-		interm_rot.identity()
+		rotator_loc = bone_head.copy() * scale
 
-		interm_bone = Bone(skeleton, parent, name+"_interm",
-		                   interm_loc, interm_rot)
-		parent = interm_bone
+	rotator_bone = Bone(skeleton, parent, name+"_rotator",
+	                    rotator_loc, rotator_rot)
+	parent = rotator_bone
 
 
-	loc = (bone_tail - bone_head) * scale
-	rot = b.matrix.copy()
-	bone = Bone(skeleton, parent, name, loc, rot)
+	translator_loc = (bone_tail - bone_head) * scale
+	translator_loc.rotate(b.matrix.inverted())
+
+	translator_rot = Matrix.Rotation(0.0, 3, "X")
+	translator_rot.identity()
+
+	bone = Bone(skeleton, parent, name, translator_loc, translator_rot)
 
 	for child in b.children:
 		treat_bone(child, scale, bone, skeleton)
 
 
-def create_cal3d_skeleton(arm_obj, arm_data,     \
-                          base_rotation_orig,    \
-                          base_translation_orig, \
-                          base_scale,            \
+def create_cal3d_skeleton(arm_obj, arm_data,
+                          base_rotation_orig,
+                          base_translation_orig,
+                          base_scale,
                           xml_version):
 	skeleton = Skeleton(arm_obj.name, xml_version)
 
@@ -59,7 +66,7 @@ def create_cal3d_skeleton(arm_obj, arm_data,     \
 
 	total_translation = (base_translation + arm_translation) * base_scale
 
-	service_root = Bone(skeleton, None, "service_root",                 \
+	service_root = Bone(skeleton, None, "service_root",
 	                    total_translation.copy(), total_rotation.copy())
 
 	root_bone = None
