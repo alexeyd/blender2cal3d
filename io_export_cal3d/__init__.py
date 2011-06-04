@@ -102,11 +102,12 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 		cal3d_meshes = []
 		cal3d_animations = []
 
-		base_translation = mathutils.Vector((0.0, 0.0, 0.0))
-		base_rotation = mathutils.Euler((self.base_rotation[0],
-		                                 self.base_rotation[1],
-		                                 self.base_rotation[2])).to_matrix()
-		base_scale = self.base_scale
+		# make some adjustments so that exported model won't be mirrored
+		base_translation = mathutils.Vector([0.0, 0.0, 0.0])
+		base_rotation = mathutils.Euler([self.base_rotation[0],
+		                                 self.base_rotation[1]+3.14159,
+		                                 self.base_rotation[2]+3.14159]).to_matrix()
+		base_scale = -self.base_scale
 		fps = self.fps
 
 		# Export armatures
