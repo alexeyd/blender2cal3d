@@ -87,6 +87,14 @@ class Vertex:
 
 
 	def to_cal3d_xml(self):
+		# normalize weights
+		total_weight = 0.0
+		for influence in self.influences:
+			total_weight += influence.weight
+
+		for influence in self.influences:
+			influence.weight /= total_weight
+		
 		s = "    <VERTEX ID=\"{0}\" NUMINFLUENCES=\"{1}\">\n".format(self.index,
 		                                                             len(self.influences))
 		s += "      <POS>{0} {1} {2}</POS>\n".format(self.loc[0],

@@ -22,14 +22,21 @@ def treat_bone(b, scale, parent, skeleton):
 	bone_head = b.head.copy()
 	bone_tail = b.tail.copy()
 
+	# convert head translation to bone if needed
+	if bone_head.length != 0: 
+		head_bone_loc = bone_head.copy() * scale
+		head_bone_rot = Matrix.Rotation(0.0, 3, "X")
+		head_bone_rot.identity()
+		head_bone = Bone(skeleton, parent, name+"_head",
+		                 head_bone_loc, head_bone_rot)
+
+		parent = head_bone
+
+
 	# each blender bone is mapped to 2 cal3d bones:
 	# rotator (also head translation goes there) and translator
 	rotator_rot = b.matrix.copy()
 	rotator_loc = Vector([0.0, 0.0, 0.0])
-
-	if bone_head.length != 0: 
-		rotator_loc = bone_head.copy() * scale
-
 	rotator_bone = Bone(skeleton, parent, name+"_rotator",
 	                    rotator_loc, rotator_rot)
 	parent = rotator_bone
@@ -37,10 +44,8 @@ def treat_bone(b, scale, parent, skeleton):
 
 	translator_loc = (bone_tail - bone_head) * scale
 	translator_loc.rotate(b.matrix.inverted())
-
 	translator_rot = Matrix.Rotation(0.0, 3, "X")
 	translator_rot.identity()
-
 	bone = Bone(skeleton, parent, name, translator_loc, translator_rot)
 
 	for child in b.children:

@@ -29,21 +29,21 @@ class Bone:
 		self.loc = loc.copy()
 		self.quat = rot.inverted().to_quaternion()
 
-		# calculate absolute rotation matrix
-		self.matrix = rot.copy()
 		if parent:
-			self.matrix.rotate(parent.matrix)
 			parent.children.append(self)
 
-		# calculate absolute translaton vector
-		self.abs_trans = loc.copy()
-		if parent:
-			self.abs_trans.rotate(parent.matrix)
-			self.abs_trans = self.abs_trans + parent.abs_trans
-		
 		# lloc and lquat are the model => bone space transformation 
-		self.lquat = self.matrix.to_quaternion()
-		self.lloc = -self.abs_trans
+		if parent:
+			parent_lquat = parent.lquat.copy()
+			parent_lquat.rotate(rot)
+			self.lquat = parent_lquat.copy()
+
+			parent_lloc = parent.lloc.copy()
+			parent_lloc.rotate(rot.inverted())
+			self.lloc = parent_lloc - loc
+		else:
+			self.lquat = self.quat.inverted()
+			self.lloc = -loc
 		
 		self.skeleton = skeleton
 		self.index = skeleton.next_bone_id

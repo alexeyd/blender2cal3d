@@ -6,6 +6,25 @@ from . import armature_classes
 from .mesh_classes import *
 from .armature_classes import *
 
+def get_vertex_influences(vertex, mesh_obj, cal3d_skeleton):
+	if not cal3d_skeleton:
+		return []
+
+	influences = []
+
+	for group in vertex.groups:
+		group_index = group.group
+		group_name = mesh_obj.vertex_groups[group_index].name
+		weight = group.weight
+
+		for bone in cal3d_skeleton.bones:
+			if bone.name == group_name:
+				influence = Influence(bone.index, weight)
+				influences.append(influence)
+				break
+
+	return influences
+
 
 def create_cal3d_mesh(mesh_obj, mesh_data,
                       cal3d_skeleton,
@@ -49,15 +68,21 @@ def create_cal3d_mesh(mesh_obj, mesh_data,
 					break
 
 			if not cal3d_vertex:
-				normal = mesh_data.vertices[vertex_index].normal.copy()
+				vertex = mesh_data.vertices[vertex_index]
+
+				normal = vertex.normal.copy()
 				normal.rotate(total_rotation)
 
-				coord = mesh_data.vertices[vertex_index].co.copy()
+				coord = vertex.co.copy()
 				coord = (coord + total_translation) * base_scale
 				coord.rotate(total_rotation)
 
 				cal3d_vertex = Vertex(cal3d_submesh, vertex_index,
 				                      coord, normal)
+
+				cal3d_vertex.influences = get_vertex_influences(vertex,
+						                                        mesh_obj,
+				                                                cal3d_skeleton)
 				cal3d_submesh.vertices.append(cal3d_vertex)
 
 			if not cal3d_vertex1:
