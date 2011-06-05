@@ -345,7 +345,7 @@ void CCal3DSceneNode::render()
             
             //------------------------------------------------------// Finally! Time to draw everthing
 
-           /* Material.BackfaceCulling = false; */
+           Material.BackfaceCulling = false;
 
            float k;
 

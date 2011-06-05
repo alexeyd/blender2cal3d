@@ -59,19 +59,6 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
     # to the class instance from the operator settings before calling.
 
     # context group
-	shall_export_meshes = BoolProperty(name="Export Meshes",
-	                                   description="",
-	                                   default=True)
-
-	shall_export_materials = BoolProperty(name="Export Materials",
-	                                      description="",
-	                                      default=False)
-
-	shall_export_armature = BoolProperty(name="Export Armature/Animations",
-	                                     description="",
-	                                     default=True)
-
-	
 	filename_prefix = StringProperty(name="Filename Prefix", 
 	                                 default="model_")
 	imagepath_prefix = StringProperty(name="Image Path Prefix",
@@ -93,12 +80,14 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 		from . import export_armature
 		from . import export_action
 		from .export_armature import create_cal3d_skeleton
+		from .export_mesh import create_cal3d_materials
 		from .export_mesh import create_cal3d_mesh
 		from .export_action import create_cal3d_animation
 
 		cal3d_dirname = os.path.dirname(self.filepath)
 
 		cal3d_skeleton = None
+		cal3d_materials = []
 		cal3d_meshes = []
 		cal3d_animations = []
 
@@ -112,18 +101,17 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 
 		# Export armatures
 		try:
-			if self.shall_export_armature:
-				for obj in context.selected_objects:
-					if obj.type == "ARMATURE":
-						if cal3d_skeleton:
-							raise RuntimeError("Only one armature is supported")
+			for obj in context.selected_objects:
+				if obj.type == "ARMATURE":
+					if cal3d_skeleton:
+						raise RuntimeError("Only one armature is supported")
 
-						base_translation = obj.matrix_world.to_translation().copy()
-						base_translation = -base_translation
-						cal3d_skeleton = create_cal3d_skeleton(obj, obj.data,
-						                                       base_rotation,
-						                                       base_translation,
-						                                       base_scale, 900)
+					base_translation = obj.matrix_world.to_translation().copy()
+					base_translation = -base_translation
+					cal3d_skeleton = create_cal3d_skeleton(obj, obj.data,
+					                                       base_rotation,
+					                                       base_translation,
+					                                       base_scale, 900)
 		except RuntimeError as e:
 			print("###### ERROR DURING ARMATURE EXPORT ######")
 			print(e)
@@ -131,14 +119,16 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 
 		# Export meshes
 		try:
-			if self.shall_export_meshes:
-				for obj in context.selected_objects:
-					if obj.type == "MESH":
-						cal3d_meshes.append(create_cal3d_mesh(obj, obj.data,
-						                                      cal3d_skeleton,
-						                                      base_rotation,
-						                                      base_translation,
-						                                      base_scale, 900))
+			cal3d_materials = create_cal3d_materials(900)
+
+			for obj in context.selected_objects:
+				if obj.type == "MESH":
+					cal3d_meshes.append(create_cal3d_mesh(context.scene, obj, 
+					                                      cal3d_skeleton,
+														  cal3d_materials,
+					                                      base_rotation,
+					                                      base_translation,
+					                                      base_scale, 900))
 		except RuntimeError as e:
 			print("###### ERROR DURING MESH EXPORT ######")
 			print(e)
@@ -147,7 +137,7 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 
 		# Export animations
 		try:
-			if self.shall_export_armature:
+			if cal3d_skeleton:
 				for action in bpy.data.actions:
 					cal3d_animation = create_cal3d_animation(cal3d_skeleton,
 					                                         action, fps,
@@ -169,6 +159,15 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 			cal3d_skeleton_file = open(skeleton_filepath, "wt")
 			cal3d_skeleton_file.write(cal3d_skeleton.to_cal3d_xml())
 			cal3d_skeleton_file.close()
+
+		for cal3d_material in cal3d_materials:
+			material_filename = self.filename_prefix + cal3d_material.name + ".xrf"
+			material_filepath = os.path.join(cal3d_dirname, material_filename)
+
+			cal3d_material_file = open(material_filepath, "wt")
+			cal3d_material_file.write(cal3d_material.to_cal3d_xml())
+			cal3d_material_file.close()
+
 
 		for cal3d_mesh in cal3d_meshes:
 			mesh_filename = self.filename_prefix + cal3d_mesh.name + ".xmf"
@@ -196,6 +195,10 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 		for cal3d_animation in cal3d_animations:
 			animation_filename = self.filename_prefix + cal3d_animation.name + ".xaf"
 			cal3d_cfg_file.write("animation={0}\n".format(animation_filename))
+
+		for cal3d_material in cal3d_materials:
+			material_filename = self.filename_prefix + cal3d_material.name + ".xrf"
+			cal3d_cfg_file.write("material={0}\n".format(material_filename))
 
 		for cal3d_mesh in cal3d_meshes:
 			mesh_filename = self.filename_prefix + cal3d_mesh.name + ".xmf"

@@ -26,15 +26,15 @@ class Material:
 		s = "<HEADER MAGIC=\"XRF\" VERSION=\"{0}\"/>\n".format(self.xml_version)
 		s += "  <MATERIAL NUMMAPS=\"{0}\">\n".format(len(self.maps_filenames))
 
-		s += "  <AMBIENT>{0} {1} {2} {3}</AMBIENT>\n".format(self.ambient_r, 
-		                                                     self.ambient_g, 
-		                                                     self.ambient_b, 
-		                                                     self.ambient_a)
+		s += "  <AMBIENT>{0} {1} {2} {3}</AMBIENT>\n".format(self.ambient.r, 
+		                                                     self.ambient.g, 
+		                                                     self.ambient.b, 
+		                                                     self.ambient.a)
 
-		s += "  <DIFFUSE>{0} {1} {2} {3}</DIFFUSE>\n".format(self.diffuse_r,
-		                                                     self.diffuse_g,
-		                                                     self.diffuse_b,
-		                                                     self.diffuse_a)
+		s += "  <DIFFUSE>{0} {1} {2} {3}</DIFFUSE>\n".format(self.diffuse.r,
+		                                                     self.diffuse.g,
+		                                                     self.diffuse.b,
+		                                                     self.diffuse.a)
 
 		s += "  <SPECULAR>{0} {1} {2} {3}</SPECULAR>\n".format(self.specular.r,
 		                                                       self.specular.g, 

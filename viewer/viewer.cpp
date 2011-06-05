@@ -122,7 +122,7 @@ int main()
   
   while (device->run()  && !quit_clicked)
   {
-    driver->beginScene( true, true, video::SColor(0,0,0,0) );
+    driver->beginScene( true, true, video::SColor(0,255,255,255) );
     
     manager->drawAll();
     gui_env->drawAll();
