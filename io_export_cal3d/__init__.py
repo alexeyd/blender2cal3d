@@ -7,7 +7,7 @@ bl_info = \
             "David Young, "               \
             "Alexey Dorokhov, "           \
 			"Matthias Ferch",
-  "blender": (2, 5, 7),
+  "blender": (2, 5, 8),
   "api": 35622,
   "location": "File > Export > Cal3D (.cfg)",
   "description": "Export mesh geometry, armature, "   \
@@ -36,8 +36,10 @@ from bpy.props import BoolProperty,        \
                       StringProperty,      \
                       FloatVectorProperty, \
                       IntProperty
-import io_utils
-from io_utils import ExportHelper, ImportHelper
+
+
+import bpy_extras
+from bpy_extras.io_utils import ExportHelper, ImportHelper
 
 import mathutils
 
@@ -73,7 +75,7 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 
 	fps = FloatProperty(name="FPS", default=25.0)
 
-	path_mode = io_utils.path_reference_mode
+	path_mode = bpy_extras.io_utils.path_reference_mode
 
 	def execute(self, context):
 		from . import export_mesh
