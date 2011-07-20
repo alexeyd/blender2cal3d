@@ -124,7 +124,6 @@ class Face:
 		self.can_collapse = 0
     
 		self.submesh = submesh
-		submesh.faces.append(self)
 
 
 	def to_cal3d_xml(self):
