@@ -69,7 +69,9 @@ def create_cal3d_skeleton(arm_obj, arm_data,
 	total_rotation = arm_rotation.copy()
 	total_rotation.rotate(base_rotation)
 
-	total_translation = (base_translation + arm_translation) * base_scale
+	total_scaling = Matrix(((base_scale.x,0,0),(0,base_scale.y,0),(0,0,base_scale.z)))
+
+	total_translation = (base_translation + arm_translation) * total_scaling
 
 	service_root = Bone(skeleton, None, "service_root",
 	                    total_translation.copy(), total_rotation.copy())
@@ -83,7 +85,7 @@ def create_cal3d_skeleton(arm_obj, arm_data,
 			else:
 				root_bone = bone
 
-	treat_bone(root_bone, base_scale, service_root, skeleton)
+	treat_bone(root_bone, total_scaling, service_root, skeleton)
 
 	return skeleton
 
