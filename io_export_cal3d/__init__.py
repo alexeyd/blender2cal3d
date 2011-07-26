@@ -113,7 +113,7 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 					cal3d_skeleton = create_cal3d_skeleton(obj, obj.data,
 					                                       base_rotation,
 					                                       base_translation,
-					                                       base_scale, 900)
+					                                       obj.scale*base_scale, 900)
 		except RuntimeError as e:
 			print("###### ERROR DURING ARMATURE EXPORT ######")
 			print(e)
