@@ -1,0 +1,77 @@
+                       Blender2Cal3d Installation
+
+
+# INFO -----------------------------------------------------------------------
+
+This repository contains two versions of a 'blender to cal3d' script. The
+ original is the "blender2cal3d.py" script which works with Blender 2.49. The
+ updated script is derived from this script and sits in the io_export_cal3d
+ folder.
+
+ The updated script works with Blender 2.58, but they are slightly different.
+
+
+
+# INSTALL - Blender 2.58 -----------------------------------------------------
+
+1) Dump the io_export_cal3d/ folder into your Blender installation directory
+   under 2.5X/scripts/addons/.
+
+   (For example, if you have downloaded blender manually, you might have
+   something like
+
+   ~/Downloads/blender-2.58a-linux-glibc27-i686/2.58/scripts/addons/
+
+   whereas if you installed with a package manager, you might have something
+   like
+
+   /usr/share/blender/2.58/scripts/addons/
+
+   Copy the entire io_export_cal3d folder like
+
+   "cp -r io_export_cal3d/  /the/directory/of/the/addon/folder/"
+
+
+2) Fire up Blender and go to
+   [File -> User Preferences -> Addons -> Import/Export].
+
+   Now click to enable the Cal3d exporter. You should be able to export to
+   Cal3d format by going to  [File -> Export -> Cal3D (.cfg) ].
+
+
+# NOTES
+
+1) Alternatively, one can load the addon directly using the button in
+   [File -> User Preferences -> Addons -> Import/Export]. If you want to make
+   changes to the script you will still have to hunt down the addon folder.
+
+2) The easiest way to see if errors have occured while using the script is to
+   open blender in a console so that you get error messages like:
+
+.....
+
+[hal@computer blender-2.58a-linux-glibc27-i686]$ ./blender
+AL lib: pulseaudio.c:331: PulseAudio returned minreq > tlength/2; expect break up
+found bundled python: /home/hal/Downloads/blender-2.58a-linux-glibc27-i686/2.58/python
+read blend: /home/hal/Project/Models/Basic_model.blend
+###### ERROR DURING ARMATURE EXPORT ######
+Only one root bone is supported
+
+....
+
+   otherwise, errors are silently ignored.
+
+
+
+# INSTALL - Blender 2.49 -----------------------------------------------------
+
+While Blender is running, open a text editor and load the script ("open text
+ block" button) "blender2cal3d.py". Read through the script and make any
+ desired changes. Run the script (Alt + P) and follow the export dialogs
+ which appear.
+
+# NOTES
+ This script is not being actively developed. For newer versions, one should
+ use the Blender 2.5X-compatible script.
+
+

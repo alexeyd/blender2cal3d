@@ -87,6 +87,9 @@ class Vertex:
 
 
 	def to_cal3d_xml(self):
+		# sort influences by weights, in descending order
+		self.influences = sorted(self.influences, key=attrgetter('weight'), reverse=True)
+
 		# normalize weights
 		total_weight = 0.0
 		for influence in self.influences:
