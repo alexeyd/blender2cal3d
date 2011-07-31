@@ -127,7 +127,10 @@ def create_cal3d_animation(cal3d_skeleton, action, fps,
 			dquat = evaluate_quat(quat_x_fcu, quat_y_fcu, 
 			                      quat_z_fcu, quat_w_fcu, keyframe)
 
-			loc = cal3d_bone.loc + (dloc * base_scale)
+			dloc = dloc * base_scale
+			dloc.rotate(cal3d_bone.quat.inverted())
+			loc = cal3d_bone.loc + dloc
+
 			quat = dquat.copy()
 			quat.invert()
 			quat.rotate(cal3d_bone.quat)
