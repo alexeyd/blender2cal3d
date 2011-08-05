@@ -66,8 +66,8 @@ def create_cal3d_skeleton(arm_obj, arm_data,
 	base_translation = base_translation_orig.copy()
 	base_rotation = base_rotation_orig.copy()
 
-	total_rotation = arm_rotation.copy()
-	total_rotation.rotate(base_rotation)
+	total_rotation = base_rotation.copy()
+	total_rotation.rotate(arm_rotation)
 
 	total_scaling = Matrix(((base_scale.x,0,0),(0,base_scale.y,0),(0,0,base_scale.z)))
 
