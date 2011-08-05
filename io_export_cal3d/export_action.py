@@ -131,9 +131,8 @@ def create_cal3d_animation(cal3d_skeleton, action, fps,
 			dloc.rotate(cal3d_bone.quat.inverted())
 			loc = cal3d_bone.loc + dloc
 
-			quat = dquat.copy()
-			quat.invert()
-			quat.rotate(cal3d_bone.quat)
+			quat = cal3d_bone.quat.copy()
+			quat.rotate(dquat.inverted())
 
 			cal3d_keyframe = KeyFrame((keyframe - 1.0)/fps, loc, quat)
 			cal3d_track.keyframes.append(cal3d_keyframe)
