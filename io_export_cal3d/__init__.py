@@ -29,6 +29,17 @@ if "bpy" in locals():
 	if "export_mesh" in locals():
 		imp.reload(export_mesh)
 
+	if "armature_classes" in locals():
+		imp.reload(armature_classes)
+
+	if "export_armature" in locals():
+		imp.reload(export_armature)
+
+	if "action_classes" in locals():
+		imp.reload(action_classes)
+
+	if "export_action" in locals():
+		imp.reload(export_action)
 
 import bpy
 from bpy.props import BoolProperty,        \
