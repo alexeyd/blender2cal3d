@@ -86,9 +86,11 @@ def create_cal3d_animation(cal3d_skeleton, action, fps,
 		if not cal3d_bone:
 			continue
 
-		cal3d_bone = cal3d_bone.parent # use rotator bone
+		cal3d_rot_bone = cal3d_bone.parent
+		cal3d_trans_bone = cal3d_bone
 
-		cal3d_track = Track(cal3d_bone.index)
+		cal3d_rot_track = Track(cal3d_rot_bone.index)
+		cal3d_trans_track = Track(cal3d_trans_bone.index)
 
 		loc_x_fcu = get_action_group_fcurve(action_group, "location", 0)
 		loc_y_fcu = get_action_group_fcurve(action_group, "location", 1)
@@ -119,8 +121,9 @@ def create_cal3d_animation(cal3d_skeleton, action, fps,
 		keyframes_list = list(keyframes_set)
 		keyframes_list.sort()
 
-		if max_keyframe < keyframes_list[len(keyframes_list)-1]:
-			max_keyframe = keyframes_list[len(keyframes_list)-1]
+		if len(keyframes_list) > 0:
+			if max_keyframe < keyframes_list[len(keyframes_list)-1]:
+				max_keyframe = keyframes_list[len(keyframes_list)-1]
 
 		for keyframe in keyframes_list:
 			dloc = evaluate_loc(loc_x_fcu, loc_y_fcu, loc_z_fcu, keyframe)
@@ -128,17 +131,27 @@ def create_cal3d_animation(cal3d_skeleton, action, fps,
 			                      quat_z_fcu, quat_w_fcu, keyframe)
 
 			dloc = dloc * base_scale
-			dloc.rotate(cal3d_bone.quat.inverted())
-			loc = cal3d_bone.loc + dloc
+			loc = cal3d_trans_bone.loc + dloc
 
-			quat = cal3d_bone.quat.copy()
-			quat.rotate(dquat.inverted())
+			quat = cal3d_rot_bone.quat.copy()
+			quat = quat.inverted()
+			quat.rotate(dquat)
+			quat = quat.inverted()
 
-			cal3d_keyframe = KeyFrame((keyframe - 1.0)/fps, loc, quat)
-			cal3d_track.keyframes.append(cal3d_keyframe)
+			cal3d_rot_keyframe = KeyFrame((keyframe - 1.0)/fps,
+			                              cal3d_rot_bone.loc.copy(), quat)
 
-		if len(cal3d_track.keyframes) > 0:
-			cal3d_animation.tracks.append(cal3d_track)
+			cal3d_trans_keyframe = KeyFrame((keyframe - 1.0)/fps,
+			                                loc, cal3d_trans_bone.quat.copy())
+
+			cal3d_rot_track.keyframes.append(cal3d_rot_keyframe)
+			cal3d_trans_track.keyframes.append(cal3d_trans_keyframe)
+
+		if len(cal3d_rot_track.keyframes) > 0:
+			cal3d_animation.tracks.append(cal3d_rot_track)
+
+		if len(cal3d_trans_track.keyframes) > 0:
+			cal3d_animation.tracks.append(cal3d_trans_track)
 	
 	if len(cal3d_animation.tracks) > 0:
 		cal3d_animation.duration = (max_keyframe - 1.0) / fps

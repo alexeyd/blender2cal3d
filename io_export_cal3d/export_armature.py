@@ -24,7 +24,7 @@ def treat_bone(b, scale, parent, skeleton):
 
 	# convert head translation to bone if needed
 	if bone_head.length != 0: 
-		head_bone_loc = bone_head.copy() * scale
+		head_bone_loc = scale * bone_head.copy()
 		head_bone_rot = Matrix.Rotation(0.0, 3, "X")
 		head_bone_rot.identity()
 		head_bone = Bone(skeleton, parent, name+"_head",
@@ -42,7 +42,7 @@ def treat_bone(b, scale, parent, skeleton):
 	parent = rotator_bone
 
 
-	translator_loc = (bone_tail - bone_head) * scale
+	translator_loc = scale * (bone_tail - bone_head)
 	translator_loc.rotate(b.matrix.inverted())
 	translator_rot = Matrix.Rotation(0.0, 3, "X")
 	translator_rot.identity()
@@ -71,7 +71,7 @@ def create_cal3d_skeleton(arm_obj, arm_data,
 
 	total_scaling = Matrix(((base_scale.x,0,0),(0,base_scale.y,0),(0,0,base_scale.z)))
 
-	total_translation = (base_translation + arm_translation) * total_scaling
+	total_translation = total_scaling * (base_translation + arm_translation)
 
 	service_root = Bone(skeleton, None, "service_root",
 	                    total_translation.copy(), total_rotation.copy())
