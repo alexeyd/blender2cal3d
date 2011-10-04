@@ -17,7 +17,9 @@ def create_cal3d_materials(xml_version):
 			if texture_slot:
 				if texture_slot.texture:
 					if texture_slot.texture.type == "IMAGE":
-						maps_filenames.append(texture_slot.texture.image.filepath)
+						if texture_slot.texture.image:
+							if texture_slot.texture.image.filepath:
+								maps_filenames.append(texture_slot.texture.image.filepath)
 		if len(maps_filenames) > 0:
 			cal3d_material = Material(material_name, material_index, xml_version)
 			cal3d_material.maps_filenames = maps_filenames
