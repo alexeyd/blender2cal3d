@@ -27,23 +27,19 @@ class Bone:
 		self.xml_version = skeleton.xml_version
 
 		self.loc = loc.copy()
-		self.quat = rot.inverted().to_quaternion()
+		self.quat = rot.to_quaternion()
+
+		self.matrix = Matrix.Translation(self.loc) * self.quat.to_matrix().to_4x4()
+		self.inv_abs_matrix = self.matrix.inverted()
 
 		if parent:
 			parent.children.append(self)
+			self.inv_abs_matrix = self.inv_abs_matrix * parent.inv_abs_matrix
 
 		# lloc and lquat are the model => bone space transformation 
-		if parent:
-			parent_lquat = parent.lquat.copy()
-			parent_lquat.rotate(rot)
-			self.lquat = parent_lquat.copy()
-
-			parent_lloc = parent.lloc.copy()
-			parent_lloc.rotate(rot.inverted())
-			self.lloc = parent_lloc - loc
-		else:
-			self.lquat = self.quat.inverted()
-			self.lloc = -loc
+		(inv_loc, inv_rot, inv_scale) = self.inv_abs_matrix.decompose()
+		self.lquat = inv_rot.copy()
+		self.lloc = inv_loc.copy()
 		
 		self.skeleton = skeleton
 		self.index = skeleton.next_bone_id
@@ -60,19 +56,19 @@ class Bone:
 		                                                         self.loc[1],
 		                                                         self.loc[2])
 
-		s += "	<ROTATION>{0} {1} {2} {3}</ROTATION>\n".format(self.quat.x,
-		                                                       self.quat.y,
-		                                                       self.quat.z,
-		                                                       self.quat.w)
+		s += "	<ROTATION>{0} {1} {2} {3}</ROTATION>\n".format(self.quat.inverted().x,
+		                                                       self.quat.inverted().y,
+		                                                       self.quat.inverted().z,
+		                                                       self.quat.inverted().w)
 
 		s += "	<LOCALTRANSLATION>{0} {1} {2}</LOCALTRANSLATION>\n".format(self.lloc[0],
 		                                                                   self.lloc[1],
 		                                                                   self.lloc[2])
 
-		s += "	<LOCALROTATION>{0} {1} {2} {3}</LOCALROTATION>\n".format(self.lquat.x, 
-		                                                                 self.lquat.y,
-		                                                                 self.lquat.z,
-		                                                                 self.lquat.w)
+		s += "	<LOCALROTATION>{0} {1} {2} {3}</LOCALROTATION>\n".format(self.lquat.inverted().x, 
+		                                                                 self.lquat.inverted().y,
+		                                                                 self.lquat.inverted().z,
+		                                                                 self.lquat.inverted().w)
 		if self.parent:
 			s += "	<PARENTID>{0}</PARENTID>\n".format(self.parent.index)
 		else:

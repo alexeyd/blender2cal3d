@@ -104,13 +104,17 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 		cal3d_meshes = []
 		cal3d_animations = []
 
-		# make some adjustments so that exported model won't be mirrored
+		# model will be transformed during export if needed
 		base_translation = mathutils.Vector([0.0, 0.0, 0.0])
 		base_rotation = mathutils.Euler([self.base_rotation[0],
-		                                 self.base_rotation[1]+3.14159,
-		                                 self.base_rotation[2]+3.14159]).to_matrix()
-		base_scale = -self.base_scale
+		                                 self.base_rotation[1],
+		                                 self.base_rotation[2]]).to_matrix()
+		base_scale = mathutils.Matrix.Scale(self.base_scale, 4)
 		fps = self.fps
+
+		armature_scale = mathutils.Matrix().to_4x4()
+		armature_scale.identity()
+
 
 		# Export armatures
 		try:
@@ -119,12 +123,15 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 					if cal3d_skeleton:
 						raise RuntimeError("Only one armature is supported")
 
-					base_translation = obj.matrix_world.to_translation().copy()
-					base_translation = -base_translation
 					cal3d_skeleton = create_cal3d_skeleton(obj, obj.data,
 					                                       base_rotation,
 					                                       base_translation,
-					                                       obj.scale*base_scale, 900)
+					                                       base_scale, 900)
+					(loc, rot, scale) = obj.matrix_world.decompose()
+					armature_scale[0][0] = scale.x
+					armature_scale[1][1] = scale.y
+					armature_scale[2][2] = scale.z
+
 		except RuntimeError as e:
 			print("###### ERROR DURING ARMATURE EXPORT ######")
 			print(e)
@@ -136,7 +143,7 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 
 			for obj in context.selected_objects:
 				if obj.type == "MESH":
-					cal3d_meshes.append(create_cal3d_mesh(context.scene, obj, 
+					cal3d_meshes.append(create_cal3d_mesh(context. scene, obj, 
 					                                      cal3d_skeleton,
 														  cal3d_materials,
 					                                      base_rotation,
@@ -154,7 +161,8 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 				for action in bpy.data.actions:
 					cal3d_animation = create_cal3d_animation(cal3d_skeleton,
 					                                         action, fps,
-					                                         base_scale, 900)
+					                                         base_scale * armature_scale, 
+					                                         900)
 					if cal3d_animation:
 						cal3d_animations.append(cal3d_animation)
 						

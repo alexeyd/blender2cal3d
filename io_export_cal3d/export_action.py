@@ -130,22 +130,20 @@ def create_cal3d_animation(cal3d_skeleton, action, fps,
 			dquat = evaluate_quat(quat_x_fcu, quat_y_fcu, 
 			                      quat_z_fcu, quat_w_fcu, keyframe)
 
-			dloc = dloc * base_scale
-			loc = cal3d_trans_bone.loc + dloc
-
 			quat = cal3d_rot_bone.quat.copy()
-			quat = quat.inverted()
 			quat.rotate(dquat)
-			quat = quat.inverted()
 
-			cal3d_rot_keyframe = KeyFrame((keyframe - 1.0)/fps,
-			                              cal3d_rot_bone.loc.copy(), quat)
+			dloc = base_scale * dloc
+			dloc.rotate(quat.inverted())
+			loc = cal3d_rot_bone.loc + dloc
 
-			cal3d_trans_keyframe = KeyFrame((keyframe - 1.0)/fps,
-			                                loc, cal3d_trans_bone.quat.copy())
+			cal3d_rot_keyframe = KeyFrame((keyframe - 1.0)/fps, loc, quat)
+
+#			cal3d_trans_keyframe = KeyFrame((keyframe - 1.0)/fps,
+#			                                loc, cal3d_trans_bone.quat.copy())
 
 			cal3d_rot_track.keyframes.append(cal3d_rot_keyframe)
-			cal3d_trans_track.keyframes.append(cal3d_trans_keyframe)
+#			cal3d_trans_track.keyframes.append(cal3d_trans_keyframe)
 
 		if len(cal3d_rot_track.keyframes) > 0:
 			cal3d_animation.tracks.append(cal3d_rot_track)

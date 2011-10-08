@@ -1,5 +1,5 @@
 import bpy
-import mathutils
+from mathutils import *
 
 from . import mesh_classes
 from . import armature_classes
@@ -14,12 +14,10 @@ def create_cal3d_materials(xml_version):
 		material_name = material.name
 		maps_filenames = []
 		for texture_slot in material.texture_slots:
-			if texture_slot:
-				if texture_slot.texture:
-					if texture_slot.texture.type == "IMAGE":
-						if texture_slot.texture.image:
-							if texture_slot.texture.image.filepath:
-								maps_filenames.append(texture_slot.texture.image.filepath)
+			if texture_slot and texture_slot.texture:
+				if texture_slot.texture.type == "IMAGE" and texture_slot.texture.image:
+					if texture_slot.texture.image.filepath:
+						maps_filenames.append(texture_slot.texture.image.filepath)
 		if len(maps_filenames) > 0:
 			cal3d_material = Material(material_name, material_index, xml_version)
 			cal3d_material.maps_filenames = maps_filenames
@@ -52,22 +50,20 @@ def create_cal3d_mesh(scene, mesh_obj,
                       cal3d_materials,
                       base_rotation_orig,
                       base_translation_orig,
-                      base_scale,
+                      base_scale_orig,
                       xml_version):
-
-	mesh_matrix = mesh_obj.matrix_world.copy()
-
-	mesh_data = mesh_obj.to_mesh(scene, False, "PREVIEW")
-	mesh_data.transform(mesh_matrix)
 
 	base_translation = base_translation_orig.copy()
 	base_rotation = base_rotation_orig.copy()
+	base_scale = base_scale_orig.copy()
 
-	(mesh_translation, mesh_quat, mesh_scale) = mesh_matrix.decompose()
-	mesh_rotation = mesh_quat.to_matrix()
+	base_matrix = base_scale                            *   \
+	              Matrix.Translation(base_translation)  *   \
+	              base_rotation.to_4x4()                *   \
+	              mesh_obj.matrix_world.copy()
 
-	total_rotation = base_rotation.copy()
-	total_translation = base_translation.copy()
+	mesh_data = mesh_obj.to_mesh(scene, False, "PREVIEW")
+	mesh_data.transform(base_matrix)
 
 	cal3d_mesh = Mesh(mesh_obj.name, xml_version)
 
@@ -140,14 +136,7 @@ def create_cal3d_mesh(scene, mesh_obj,
 				vertex = mesh_data.vertices[vertex_index]
 
 				normal = vertex.normal.copy()
-				normal *= base_scale
-				normal.rotate(total_rotation)
-				normal.normalize()
-
 				coord = vertex.co.copy()
-				coord = coord + total_translation
-				coord *= base_scale
-				coord.rotate(total_rotation)
 
 				if duplicate:
 					cal3d_vertex = Vertex(cal3d_submesh, duplicate_index,
