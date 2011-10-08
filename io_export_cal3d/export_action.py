@@ -87,10 +87,8 @@ def create_cal3d_animation(cal3d_skeleton, action, fps,
 			continue
 
 		cal3d_rot_bone = cal3d_bone.parent
-		cal3d_trans_bone = cal3d_bone
 
 		cal3d_rot_track = Track(cal3d_rot_bone.index)
-		cal3d_trans_track = Track(cal3d_trans_bone.index)
 
 		loc_x_fcu = get_action_group_fcurve(action_group, "location", 0)
 		loc_y_fcu = get_action_group_fcurve(action_group, "location", 1)
@@ -134,22 +132,14 @@ def create_cal3d_animation(cal3d_skeleton, action, fps,
 			quat.rotate(dquat)
 
 			dloc = base_scale * dloc
-			dloc.rotate(quat.inverted())
+			dloc.rotate(cal3d_rot_bone.quat)
 			loc = cal3d_rot_bone.loc + dloc
 
 			cal3d_rot_keyframe = KeyFrame((keyframe - 1.0)/fps, loc, quat)
-
-#			cal3d_trans_keyframe = KeyFrame((keyframe - 1.0)/fps,
-#			                                loc, cal3d_trans_bone.quat.copy())
-
 			cal3d_rot_track.keyframes.append(cal3d_rot_keyframe)
-#			cal3d_trans_track.keyframes.append(cal3d_trans_keyframe)
 
 		if len(cal3d_rot_track.keyframes) > 0:
 			cal3d_animation.tracks.append(cal3d_rot_track)
-
-		if len(cal3d_trans_track.keyframes) > 0:
-			cal3d_animation.tracks.append(cal3d_trans_track)
 	
 	if len(cal3d_animation.tracks) > 0:
 		cal3d_animation.duration = (max_keyframe - 1.0) / fps
