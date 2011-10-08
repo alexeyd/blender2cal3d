@@ -70,8 +70,8 @@ def create_cal3d_skeleton(arm_obj, arm_data,
 	base_scale = base_scale_orig.copy()
 
 	base_matrix = base_scale                            * \
-	              Matrix.Translation(base_translation)  * \
 	              base_rotation.to_4x4()                * \
+	              Matrix.Translation(base_translation)  * \
 	              arm_obj.matrix_world.copy()
 
 	(loc, rot, scale) = base_matrix.decompose()
@@ -80,9 +80,9 @@ def create_cal3d_skeleton(arm_obj, arm_data,
 	total_rotation = rot.to_matrix().to_3x3()
 	total_scale = scale.copy()
 
-
 	service_root = Bone(skeleton, None, "_service_root",
-	                    total_translation.copy(), total_rotation.copy())
+	                    total_translation.copy(),
+						total_rotation.copy())
 
 	for bone in arm_data.bones.values():
 		if not bone.parent and bone.name[0] != "_":

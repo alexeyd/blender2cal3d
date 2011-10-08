@@ -42,7 +42,7 @@ if "bpy" in locals():
 		imp.reload(export_action)
 
 import bpy
-from bpy.props import BoolProperty,        \
+from bpy.props import BoolVectorProperty,  \
                       FloatProperty,       \
                       StringProperty,      \
                       FloatVectorProperty, \
@@ -77,12 +77,20 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 	imagepath_prefix = StringProperty(name="Image Path Prefix",
 	                                  default="model_")
 
+	base_translation = FloatVectorProperty(name="Base Translation", 
+	                                       default = (0.0, 0.0, 0.0),
+	                                       subtype="TRANSLATION")
+
 	base_rotation = FloatVectorProperty(name="Base Rotation", 
 	                                    default = (0.0, 0.0, 0.0),
 	                                    subtype="EULER")
 
-	base_scale = FloatProperty(name="Base Scale",
-	                           default=1.0)
+	base_scale = FloatProperty(name="Base Scale", default=1.0)
+
+	# that would be a cool feature once I finish debugging (=
+	mirror_boolvec = BoolVectorProperty(name = "Mirror", 
+	                                    default= (False, False, False),
+	                                    subtype="XYZ", options = {"HIDDEN"})
 
 	fps = FloatProperty(name="FPS", default=25.0)
 
@@ -105,11 +113,25 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 		cal3d_animations = []
 
 		# model will be transformed during export if needed
-		base_translation = mathutils.Vector([0.0, 0.0, 0.0])
+		base_translation = mathutils.Vector([self.base_translation[0],
+		                                     self.base_translation[1],
+		                                     self.base_translation[2]])
+
 		base_rotation = mathutils.Euler([self.base_rotation[0],
 		                                 self.base_rotation[1],
 		                                 self.base_rotation[2]]).to_matrix()
+
 		base_scale = mathutils.Matrix.Scale(self.base_scale, 4)
+
+		if(self.mirror_boolvec[0]):
+			base_scale[0][0] = -base_scale[0][0]
+
+		if(self.mirror_boolvec[1]):
+			base_scale[1][1] = -base_scale[1][1]
+
+		if(self.mirror_boolvec[2]):
+			base_scale[2][2] = -base_scale[2][2]
+
 		fps = self.fps
 
 		armature_scale = mathutils.Matrix().to_4x4()
@@ -161,7 +183,7 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 				for action in bpy.data.actions:
 					cal3d_animation = create_cal3d_animation(cal3d_skeleton,
 					                                         action, fps,
-					                                         base_scale * armature_scale, 
+					                                         base_scale * armature_scale,
 					                                         900)
 					if cal3d_animation:
 						cal3d_animations.append(cal3d_animation)

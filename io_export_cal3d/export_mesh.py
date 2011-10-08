@@ -58,8 +58,8 @@ def create_cal3d_mesh(scene, mesh_obj,
 	base_scale = base_scale_orig.copy()
 
 	base_matrix = base_scale                            *   \
-	              Matrix.Translation(base_translation)  *   \
 	              base_rotation.to_4x4()                *   \
+	              Matrix.Translation(base_translation)  *   \
 	              mesh_obj.matrix_world.copy()
 
 	mesh_data = mesh_obj.to_mesh(scene, False, "PREVIEW")
