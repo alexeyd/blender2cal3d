@@ -76,7 +76,7 @@ def track_sort_key(track):
 
 
 def create_cal3d_animation(cal3d_skeleton, action, fps, 
-                           base_scale, xml_version):
+                           xml_version):
 	cal3d_animation = Animation(action.name, xml_version)
 
 	max_keyframe = 0.0
@@ -131,7 +131,9 @@ def create_cal3d_animation(cal3d_skeleton, action, fps,
 			quat = cal3d_rot_bone.quat.copy()
 			quat.rotate(dquat)
 
-			dloc = base_scale * dloc
+			dloc.x = dloc.x * cal3d_rot_bone.scale.x
+			dloc.y = dloc.y * cal3d_rot_bone.scale.y
+			dloc.z = dloc.z * cal3d_rot_bone.scale.z
 			dloc.rotate(cal3d_rot_bone.quat)
 			loc = cal3d_rot_bone.loc + dloc
 

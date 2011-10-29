@@ -90,7 +90,7 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 	# that would be a cool feature once I finish debugging (=
 	mirror_boolvec = BoolVectorProperty(name = "Mirror", 
 	                                    default= (False, False, False),
-	                                    subtype="XYZ", options = {"HIDDEN"})
+	                                    subtype="XYZ")
 
 	fps = FloatProperty(name="FPS", default=25.0)
 
@@ -183,7 +183,6 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 				for action in bpy.data.actions:
 					cal3d_animation = create_cal3d_animation(cal3d_skeleton,
 					                                         action, fps,
-					                                         base_scale * armature_scale,
 					                                         900)
 					if cal3d_animation:
 						cal3d_animations.append(cal3d_animation)

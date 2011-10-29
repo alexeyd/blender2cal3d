@@ -20,7 +20,7 @@ class Skeleton:
 
 
 class Bone:
-	def __init__(self, skeleton, parent, name, loc, rot):
+	def __init__(self, skeleton, parent, name, loc, rot, scale):
 		self.parent = parent
 		self.name = name
 		self.children = []
@@ -28,6 +28,7 @@ class Bone:
 
 		self.loc = loc.copy()
 		self.quat = rot.to_quaternion()
+		self.scale = scale.copy()
 
 		self.matrix = Matrix.Translation(self.loc) * self.quat.to_matrix().to_4x4()
 		self.inv_abs_matrix = self.matrix.inverted()

@@ -31,7 +31,7 @@ def treat_bone(b, scale, parent, skeleton):
 		head_bone_rot = Matrix().to_3x3()
 		head_bone_rot.identity()
 		head_bone = Bone(skeleton, parent, name+"_head",
-		                 head_bone_loc, head_bone_rot)
+		                 head_bone_loc, head_bone_rot, scale.copy())
 
 		parent = head_bone
 
@@ -41,7 +41,7 @@ def treat_bone(b, scale, parent, skeleton):
 	rotator_rot = b.matrix.copy()
 	rotator_loc = Vector([0.0, 0.0, 0.0])
 	rotator_bone = Bone(skeleton, parent, name+"_rotator",
-	                    rotator_loc, rotator_rot)
+	                    rotator_loc, rotator_rot, scale.copy())
 	parent = rotator_bone
 
 
@@ -52,7 +52,8 @@ def treat_bone(b, scale, parent, skeleton):
 	translator_loc.rotate(b.matrix.inverted())
 	translator_rot = Matrix().to_3x3()
 	translator_rot.identity()
-	bone = Bone(skeleton, parent, name, translator_loc, translator_rot)
+	bone = Bone(skeleton, parent, name, 
+	            translator_loc, translator_rot, scale.copy())
 
 	for child in b.children:
 		treat_bone(child, scale, bone, skeleton)
@@ -82,7 +83,8 @@ def create_cal3d_skeleton(arm_obj, arm_data,
 
 	service_root = Bone(skeleton, None, "_service_root",
 	                    total_translation.copy(),
-						total_rotation.copy())
+						total_rotation.copy(),
+	                    total_scale.copy())
 
 	for bone in arm_data.bones.values():
 		if not bone.parent and bone.name[0] != "_":
