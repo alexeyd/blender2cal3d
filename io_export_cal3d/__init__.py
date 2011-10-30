@@ -44,6 +44,7 @@ if "bpy" in locals():
 import bpy
 from bpy.props import BoolVectorProperty,  \
                       FloatProperty,       \
+                      BoolProperty,       \
                       StringProperty,      \
                       FloatVectorProperty, \
                       IntProperty
@@ -93,8 +94,88 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 	                                    subtype="XYZ")
 
 	fps = FloatProperty(name="FPS", default=25.0)
+	cs_format = BoolProperty(name = ".CFG in CS XML format (experimental)", default= False)
 
 	path_mode = bpy_extras.io_utils.path_reference_mode
+
+
+
+	def export_cfg(self, filepath, cal3d_skeleton, cal3d_animations, cal3d_materials, cal3d_meshes):
+		cal3d_cfg_file = open(filepath, "wt")
+
+		if cal3d_skeleton:
+			skeleton_filename = self.filename_prefix + cal3d_skeleton.name + ".xsf"
+			cal3d_cfg_file.write("skeleton={0}\n".format(skeleton_filename))
+
+		for cal3d_animation in cal3d_animations:
+			animation_filename = self.filename_prefix + cal3d_animation.name + ".xaf"
+			cal3d_cfg_file.write("animation={0}\n".format(animation_filename))
+
+		for cal3d_material in cal3d_materials:
+			material_filename = self.filename_prefix + cal3d_material.name + ".xrf"
+			cal3d_cfg_file.write("material={0}\n".format(material_filename))
+
+		for cal3d_mesh in cal3d_meshes:
+			mesh_filename = self.filename_prefix + cal3d_mesh.name + ".xmf"
+			cal3d_cfg_file.write("mesh={0}\n".format(mesh_filename))
+
+		cal3d_cfg_file.close()
+
+
+	# yes, that function is a fast hack. shame on me (=
+	def export_xml_cfg(self, filepath, cal3d_skeleton, cal3d_animations, cal3d_materials, cal3d_meshes):
+		cal3d_cfg_file = open(filepath, "wt")
+		cal3d_cfg_file.write("<!--\n#\n# CS cal3d model xml file\n#\n# model: {0}\n#\n-->\n".format(filepath))
+		cal3d_cfg_file.write("<library>\n")
+		cal3d_cfg_file.write("    <shaders><file>/shader/lighting/lighting_character.xml</file></shaders>\n")
+
+		cal3d_cfg_file.write("    <textures>\n")
+		for cal3d_material in cal3d_materials:
+			cal3d_cfg_file.write("       <texture name=\"{0}\">\n".format(cal3d_material.maps_filenames[0]))
+			cal3d_cfg_file.write("           <file>{0}</file>\n".format(cal3d_material.maps_filenames[0]))
+			cal3d_cfg_file.write("       </texture>\n")
+		cal3d_cfg_file.write("    </textures>\n")
+
+		cal3d_cfg_file.write("    <materials>\n")
+		for cal3d_material in cal3d_materials:
+			cal3d_cfg_file.write("        <material name=\"{0}\">\n".format(cal3d_material.name))
+			cal3d_cfg_file.write("            <shader type=\"depthwrite\">*null</shader>\n")
+			cal3d_cfg_file.write("            <shader type=\"base\">lighting_character</shader>\n")
+			cal3d_cfg_file.write("            <shader type=\"diffuse\">lighting_character</shader>\n")
+			cal3d_cfg_file.write("            <shadervar name=\"tex diffuse\" type=\"texture\">{0}</shadervar>\n".format(cal3d_material.maps_filenames[0]))
+			cal3d_cfg_file.write("            <shadervar name=\"color modulation\" type=\"vector4\">1,1,1,1</shadervar>\n")
+			cal3d_cfg_file.write("            <shadervar name=\"specular\" type=\"vector3\">0,0,0</shadervar>\n")
+			cal3d_cfg_file.write("        </material>\n".format(cal3d_material.name))
+		cal3d_cfg_file.write("    </materials>\n")
+
+		cal3d_cfg_file.write("    <meshfact name=\"{0}\">\n".format(filepath))
+		cal3d_cfg_file.write("        <plugin>crystalspace.mesh.loader.factory.sprite.cal3d</plugin>\n")
+		cal3d_cfg_file.write("        <params>\n")
+
+		skeleton_filename = self.filename_prefix + cal3d_skeleton.name + ".csf"
+		cal3d_cfg_file.write("            <skeleton file=\"{0}\" />\n".format(skeleton_filename))
+
+		
+		for cal3d_animation in cal3d_animations:
+			animation_filename = self.filename_prefix + cal3d_animation.name + ".caf"
+			cal3d_cfg_file.write("            <animation file=\"{0}\" name=\"{1}\" type=\"action\"/>\n".format(animation_filename, animation_filename))
+
+
+		for cal3d_mesh in cal3d_meshes:
+			mesh_filename = self.filename_prefix + cal3d_mesh.name + ".cmf"
+			mesh_material_name = ""
+			submesh = cal3d_mesh.submeshes[0]
+			for cal3d_material in cal3d_materials:
+				if cal3d_material.index == submesh.material_id:
+					mesh_material_name = cal3d_material.name
+					break
+			cal3d_cfg_file.write("            <mesh file=\"{0}\" material=\"{1}\" name=\"{2}\" />\n".format(mesh_filename, mesh_material_name, cal3d_mesh.name))
+		cal3d_cfg_file.write("        </params>\n")
+		cal3d_cfg_file.write("    </meshfact>\n")
+		cal3d_cfg_file.write("</library>\n")
+
+		cal3d_cfg_file.close()
+
 
 	def execute(self, context):
 		from . import export_mesh
@@ -227,26 +308,10 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 			cal3d_animation_file.write(cal3d_animation.to_cal3d_xml())
 			cal3d_animation_file.close()
 
-
-		cal3d_cfg_file = open(self.filepath, "wt")
-
-		if cal3d_skeleton:
-			skeleton_filename = self.filename_prefix + cal3d_skeleton.name + ".xsf"
-			cal3d_cfg_file.write("skeleton={0}\n".format(skeleton_filename))
-
-		for cal3d_animation in cal3d_animations:
-			animation_filename = self.filename_prefix + cal3d_animation.name + ".xaf"
-			cal3d_cfg_file.write("animation={0}\n".format(animation_filename))
-
-		for cal3d_material in cal3d_materials:
-			material_filename = self.filename_prefix + cal3d_material.name + ".xrf"
-			cal3d_cfg_file.write("material={0}\n".format(material_filename))
-
-		for cal3d_mesh in cal3d_meshes:
-			mesh_filename = self.filename_prefix + cal3d_mesh.name + ".xmf"
-			cal3d_cfg_file.write("mesh={0}\n".format(mesh_filename))
-
-		cal3d_cfg_file.close()
+		if self.cs_format:
+			self.export_xml_cfg(self.filepath, cal3d_skeleton, cal3d_animations, cal3d_materials, cal3d_meshes)
+		else:
+			self.export_cfg(self.filepath, cal3d_skeleton, cal3d_animations, cal3d_materials, cal3d_meshes)
 
 		return {"FINISHED"}
 
