@@ -1,5 +1,5 @@
 import bpy
-from mathutils import *
+import mathutils
 
 from . import mesh_classes
 from . import armature_classes
@@ -14,10 +14,10 @@ def create_cal3d_materials(xml_version):
 		material_name = material.name
 		maps_filenames = []
 		for texture_slot in material.texture_slots:
-			if texture_slot and texture_slot.texture:
-				if texture_slot.texture.type == "IMAGE" and texture_slot.texture.image:
-					if texture_slot.texture.image.filepath:
-						maps_filenames.append(texture_slot.texture.image.filepath)
+			if texture_slot:
+				if texture_slot.texture:
+					if texture_slot.texture.type == "IMAGE":
+						maps_filenames.append(texture_slot.texture.image.filepath[2:]) #remove the double slash
 		if len(maps_filenames) > 0:
 			cal3d_material = Material(material_name, material_index, xml_version)
 			cal3d_material.maps_filenames = maps_filenames
@@ -25,22 +25,34 @@ def create_cal3d_materials(xml_version):
 	return cal3d_materials
 
 
-def get_vertex_influences(vertex, mesh_obj, cal3d_skeleton):
+def get_vertex_influences(vertex, mesh_obj, cal3d_skeleton, use_groups, use_envelopes, armature_obj):
 	if not cal3d_skeleton:
 		return []
 
 	influences = []
+	
+	if use_groups:
+		for group in vertex.groups:
+			group_index = group.group
+			group_name = mesh_obj.vertex_groups[group_index].name
+			weight = group.weight
+			if weight > 0.0001:
+				for bone in cal3d_skeleton.bones:
+					if (bone.name == group_name):
+						influence = Influence(bone.index, weight)
+						influences.append(influence)
+						break
 
-	for group in vertex.groups:
-		group_index = group.group
-		group_name = mesh_obj.vertex_groups[group_index].name
-		weight = group.weight
-
-		for bone in cal3d_skeleton.bones:
-			if bone.name == group_name:
-				influence = Influence(bone.index, weight)
-				influences.append(influence)
-				break
+	# THIS IS BROKEN
+	if False and use_envelopes and not (len(influences) > 0):
+		for bone in armature_obj.data.bones:
+			weight = bone.evaluate_envelope(armature_obj.matrix_world.copy().inverted() * (mesh_obj.matrix_world * vertex.co))
+			if weight > 0:
+				for cal3d_bone in cal3d_skeleton.bones:
+					if bone.name == cal3d_bone.name:
+						influence = Influence(cal3d_bone.index, weight)
+						influences.append(influence)
+						break
 
 	return influences
 
@@ -50,20 +62,23 @@ def create_cal3d_mesh(scene, mesh_obj,
                       cal3d_materials,
                       base_rotation_orig,
                       base_translation_orig,
-                      base_scale_orig,
-                      xml_version):
+                      base_scale,
+                      xml_version,
+					  use_groups, use_envelopes, armature_obj):
+
+	mesh_matrix = mesh_obj.matrix_world.copy()
+
+	mesh_data = mesh_obj.to_mesh(scene, False, "PREVIEW")
+	mesh_data.transform(mesh_matrix)
 
 	base_translation = base_translation_orig.copy()
 	base_rotation = base_rotation_orig.copy()
-	base_scale = base_scale_orig.copy()
 
-	base_matrix = base_scale                            *   \
-	              base_rotation.to_4x4()                *   \
-	              Matrix.Translation(base_translation)  *   \
-	              mesh_obj.matrix_world.copy()
+	(mesh_translation, mesh_quat, mesh_scale) = mesh_matrix.decompose()
+	mesh_rotation = mesh_quat.to_matrix()
 
-	mesh_data = mesh_obj.to_mesh(scene, False, "PREVIEW")
-	mesh_data.transform(base_matrix)
+	total_rotation = base_rotation.copy()
+	total_translation = base_translation.copy()
 
 	cal3d_mesh = Mesh(mesh_obj.name, xml_version)
 
@@ -131,12 +146,18 @@ def create_cal3d_mesh(scene, mesh_obj,
 
 					break
 
-
 			if not cal3d_vertex:
 				vertex = mesh_data.vertices[vertex_index]
 
 				normal = vertex.normal.copy()
+				normal *= base_scale
+				normal.rotate(total_rotation)
+				normal.normalize()
+
 				coord = vertex.co.copy()
+				coord = coord + total_translation
+				coord *= base_scale
+				coord.rotate(total_rotation)
 
 				if duplicate:
 					cal3d_vertex = Vertex(cal3d_submesh, duplicate_index,
@@ -147,10 +168,11 @@ def create_cal3d_mesh(scene, mesh_obj,
 					cal3d_vertex = Vertex(cal3d_submesh, vertex_index,
 					                      coord, normal)
 
-
+										  
 				cal3d_vertex.influences = get_vertex_influences(vertex,
 						                                        mesh_obj,
-				                                                cal3d_skeleton)
+				                                                cal3d_skeleton,
+																use_groups, use_envelopes, armature_obj)
 				for uv in uvs:
 					cal3d_vertex.maps.append(Map(uv[0], uv[1]))
 

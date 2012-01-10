@@ -1,4 +1,5 @@
 import os
+from array import array
 from math import *
 
 import bpy
@@ -11,6 +12,7 @@ class Skeleton:
 		self.bones = []
 		self.next_bone_id = 0
 
+		
 	def to_cal3d_xml(self):
 		s = "<HEADER MAGIC=\"XSF\" VERSION=\"{0}\"/>\n".format(self.xml_version)
 		s += "<SKELETON NUMBONES=\"{0}\">\n".format(len(self.bones))
@@ -18,29 +20,36 @@ class Skeleton:
 		s += "</SKELETON>\n"
 		return s
 
+		
+	def to_cal3d_binary(self, file):
+		s = b'CSF\0'
+		ar = array('b', list(s))
+		ar.tofile(file)
+		
+		ar = array('L', [1200,
+						 len(self.bones)])
+		ar.tofile(file)
+		
+		for bn in self.bones:
+			bn.to_cal3d_binary(file)
+
+
 
 class Bone:
-	def __init__(self, skeleton, parent, name, loc, rot, scale):
+	def __init__(self, skeleton, parent, name, loc, rot, lloc, lquat):
 		self.parent = parent
 		self.name = name
 		self.children = []
 		self.xml_version = skeleton.xml_version
 
 		self.loc = loc.copy()
-		self.quat = rot.to_quaternion()
-		self.scale = scale.copy()
-
-		self.matrix = Matrix.Translation(self.loc) * self.quat.to_matrix().to_4x4()
-		self.inv_abs_matrix = self.matrix.inverted()
+		self.quat = rot.copy()
 
 		if parent:
 			parent.children.append(self)
-			self.inv_abs_matrix = self.inv_abs_matrix * parent.inv_abs_matrix
 
-		# lloc and lquat are the model => bone space transformation 
-		(inv_loc, inv_rot, inv_scale) = self.inv_abs_matrix.decompose()
-		self.lquat = inv_rot.copy()
-		self.lloc = inv_loc.copy()
+		self.lquat = lquat
+		self.lloc = lloc
 		
 		self.skeleton = skeleton
 		self.index = skeleton.next_bone_id
@@ -57,19 +66,19 @@ class Bone:
 		                                                         self.loc[1],
 		                                                         self.loc[2])
 
-		s += "	<ROTATION>{0} {1} {2} {3}</ROTATION>\n".format(self.quat.inverted().x,
-		                                                       self.quat.inverted().y,
-		                                                       self.quat.inverted().z,
-		                                                       self.quat.inverted().w)
+		s += "	<ROTATION>{0} {1} {2} {3}</ROTATION>\n".format(self.quat.x,
+		                                                       self.quat.y,
+		                                                       self.quat.z,
+		                                                       self.quat.w)
 
 		s += "	<LOCALTRANSLATION>{0} {1} {2}</LOCALTRANSLATION>\n".format(self.lloc[0],
 		                                                                   self.lloc[1],
 		                                                                   self.lloc[2])
 
-		s += "	<LOCALROTATION>{0} {1} {2} {3}</LOCALROTATION>\n".format(self.lquat.inverted().x, 
-		                                                                 self.lquat.inverted().y,
-		                                                                 self.lquat.inverted().z,
-		                                                                 self.lquat.inverted().w)
+		s += "	<LOCALROTATION>{0} {1} {2} {3}</LOCALROTATION>\n".format(self.lquat.x, 
+		                                                                 self.lquat.y,
+		                                                                 self.lquat.z,
+		                                                                 self.lquat.w)
 		if self.parent:
 			s += "	<PARENTID>{0}</PARENTID>\n".format(self.parent.index)
 		else:
@@ -79,4 +88,40 @@ class Bone:
 		s += "  </BONE>\n"
 		return s
 
-
+		
+	def to_cal3d_binary(self, file):
+		name = self.name
+		name += '\0'
+		ar = array('L', [len(name)])
+		ar.tofile(file)
+		
+		ar = array('b', list(name.encode("utf8")))
+		ar.tofile(file)
+		
+		ar = array('f', [self.loc[0],
+						 self.loc[1],
+						 self.loc[2],
+						 self.quat.x,
+						 self.quat.y,
+						 self.quat.z,
+						 self.quat.w,
+						 self.lloc[0],
+						 self.lloc[1],
+						 self.lloc[2],
+						 self.lquat.x, 
+						 self.lquat.y,
+						 self.lquat.z,
+						 self.lquat.w])
+		ar.tofile(file)
+		
+		if self.parent:
+			ar = array('L', [self.parent.index])
+		else:
+			ar = array('l', [-1])
+		if self.children:
+			ar.append(len(self.children))
+			for ch in self.children:
+				ar.append(ch.index)
+		else:
+			ar.append(0)
+		ar.tofile(file)

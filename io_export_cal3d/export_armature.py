@@ -8,7 +8,7 @@ from . import armature_classes
 from .armature_classes import *
 
 
-def treat_bone(b, scale, parent, skeleton):
+def treat_bone(b, scale, parent, skeleton, world_matrix):
 	# skip bones that start with _
 	# also skips children of that bone so be careful
 	if len(b.name) == 0:
@@ -18,77 +18,93 @@ def treat_bone(b, scale, parent, skeleton):
 		return
 
 	name = b.name
-
-	bone_head = b.head.copy()
-	bone_tail = b.tail.copy()
-
-	# convert head translation to bone if needed
-	if bone_head.length != 0: 
-		head_bone_loc = bone_head.copy()
-		head_bone_loc.x *= scale.x
-		head_bone_loc.y *= scale.y
-		head_bone_loc.z *= scale.z
-		head_bone_rot = Matrix().to_3x3()
-		head_bone_rot.identity()
-		head_bone = Bone(skeleton, parent, name+"_head",
-		                 head_bone_loc, head_bone_rot, scale.copy())
-
-		parent = head_bone
-
-
-	# each blender bone is mapped to 2 cal3d bones:
-	# rotator and translator
-	rotator_rot = b.matrix.copy()
-	rotator_loc = Vector([0.0, 0.0, 0.0])
-	rotator_bone = Bone(skeleton, parent, name+"_rotator",
-	                    rotator_loc, rotator_rot, scale.copy())
-	parent = rotator_bone
-
-
-	translator_loc = (bone_tail - bone_head)
-	translator_loc.x *= scale.x
-	translator_loc.y *= scale.y
-	translator_loc.z *= scale.z
-	translator_loc.rotate(b.matrix.inverted())
-	translator_rot = Matrix().to_3x3()
-	translator_rot.identity()
-	bone = Bone(skeleton, parent, name, 
-	            translator_loc, translator_rot, scale.copy())
+	
+	# Scale the translation part of the armature -> bone matrix
+	scaled_matrix_local = (Matrix.Translation(scale * b.head_local)
+							* b.matrix_local.to_quaternion().to_matrix().to_4x4())
+							
+	# Calculate the transform from model space to joint space.
+	joint_coordinate_frame = world_matrix * scaled_matrix_local
+	
+	local_quat = joint_coordinate_frame.to_quaternion()
+	local_trans = local_quat.inverted() * (-joint_coordinate_frame.to_translation())
+	
+	if b.parent:
+		if b.parent.parent:
+			bone_trans = b.parent.matrix.inverted() * (scale * (b.parent.tail + b.head))
+		else:
+			bone_trans = b.parent.matrix_local.inverted() * (scale * (b.parent.tail + b.head))
+	else:
+		bone_trans = (scale * b.head)
+	
+	oneBone = True
+	if oneBone:
+		bone = Bone(skeleton, parent, name,
+							 bone_trans,
+							 b.matrix.to_quaternion().inverted(),
+							 local_trans,
+							 local_quat)
+	else:
+		# this works but doubling the number of bones is very undesirable
+		bone = Bone(skeleton, parent, name,
+							 (scale * b.head),
+							 b.matrix.to_quaternion().inverted(),
+							 local_trans,
+							 local_quat)
+		                     
+		bone = Bone(skeleton, bone, name + "_tail",
+							 b.matrix.inverted() * (scale * b.tail),
+							 Quaternion((1, 0, 0, 0)),
+							 Vector(),
+							 Quaternion((1, 0, 0, 0)))
 
 	for child in b.children:
-		treat_bone(child, scale, bone, skeleton)
-
+		treat_bone(child, scale, bone, skeleton, world_matrix)
+	
+	if len(b.children) == 0 and oneBone:
+		bone = Bone(skeleton, bone, name + "_leaf",
+					b.matrix.inverted() * (scale * b.tail),
+					Quaternion((1, 0, 0, 0)),
+					Vector(),
+					Quaternion((1, 0, 0, 0)))
 
 def create_cal3d_skeleton(arm_obj, arm_data,
-                          base_rotation_orig,
-                          base_translation_orig,
-                          base_scale_orig,
+                          base_rotation,
+                          base_translation,
+                          base_scale,
                           xml_version):
 	skeleton = Skeleton(arm_obj.name, xml_version)
+	
+	(arm_translation, arm_quat, arm_scale) = arm_obj.matrix_world.decompose()
 
-	base_translation = base_translation_orig.copy()
-	base_rotation = base_rotation_orig.copy()
-	base_scale = base_scale_orig.copy()
+	total_translation = (base_scale * arm_translation) + base_translation
 
-	base_matrix = base_scale                            * \
-	              base_rotation.to_4x4()                * \
-	              Matrix.Translation(base_translation)  * \
-	              arm_obj.matrix_world.copy()
+	total_rotation = base_rotation * arm_quat.to_matrix()
 
-	(loc, rot, scale) = base_matrix.decompose()
+	total_scaling = Matrix(((base_scale * arm_scale.x, 0, 0),
+							(0, base_scale * arm_scale.y, 0),
+							(0, 0, base_scale * arm_scale.z)))
 
-	total_translation = loc.copy()
-	total_rotation = rot.to_matrix().to_3x3()
-	total_scale = scale.copy()
+	service_root = Bone(skeleton, None, "service_root",
+	                    total_translation.copy(), 
+	                    total_rotation.to_quaternion().inverted(),
+	                    Vector(), 
+	                    Quaternion((1, 0, 0, 0)))
 
-	service_root = Bone(skeleton, None, "_service_root",
-	                    total_translation.copy(),
-						total_rotation.copy(),
-	                    total_scale.copy())
+	root_bone = None
 
 	for bone in arm_data.bones.values():
 		if not bone.parent and bone.name[0] != "_":
-			treat_bone(bone, total_scale, service_root, skeleton)
+			if root_bone:
+				raise RuntimeError("Only one root bone is supported")
+			else:
+				root_bone = bone
+
+	#arm_world_noscale = Matrix.Translation(-arm_translation) * arm_quat.inverted().to_matrix().to_4x4()
+	arm_world_noscale = Matrix.Translation(arm_translation) * arm_quat.to_matrix().to_4x4()
+
+	treat_bone(root_bone, total_scaling, service_root, skeleton, 
+				arm_world_noscale)
 
 	return skeleton
 
