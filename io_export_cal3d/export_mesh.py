@@ -7,7 +7,7 @@ from .mesh_classes import *
 from .armature_classes import *
 
 
-def create_cal3d_materials(xml_version):
+def create_cal3d_materials(cal3d_dirname, imagepath_prefix, xml_version):
 	cal3d_materials = []
 	for material in bpy.data.materials:
 		material_index = len(cal3d_materials)
@@ -17,7 +17,20 @@ def create_cal3d_materials(xml_version):
 			if texture_slot:
 				if texture_slot.texture:
 					if texture_slot.texture.type == "IMAGE":
-						maps_filenames.append(texture_slot.texture.image.filepath[2:]) #remove the double slash
+						imagename = bpy.path.basename(texture_slot.texture.image.filepath)
+						filepath = os.path.abspath(bpy.path.abspath(texture_slot.texture.image.filepath))
+						texturePath = os.path.join(cal3d_dirname, imagepath_prefix + imagename)
+						if not os.path.exists(os.path.dirname(texturePath)):
+							os.mkdir(os.path.dirname(texturePath))
+						if os.path.exists(filepath):
+							import shutil
+							try:
+								shutil.copy(filepath, texturePath)
+								print("Copied texture to " + texturePath)
+							except Exception as e:
+								print("Error copying texture " + str(e))
+						maps_filenames.append(imagepath_prefix + imagename)
+						#maps_filenames.append(texture_slot.texture.image.filepath[2:]) #remove the double slash
 		if len(maps_filenames) > 0:
 			cal3d_material = Material(material_name, material_index, xml_version)
 			cal3d_material.maps_filenames = maps_filenames
@@ -43,7 +56,7 @@ def get_vertex_influences(vertex, mesh_obj, cal3d_skeleton, use_groups, use_enve
 						influences.append(influence)
 						break
 
-	# THIS IS BROKEN
+	# XXX BROKEN
 	if False and use_envelopes and not (len(influences) > 0):
 		for bone in armature_obj.data.bones:
 			weight = bone.evaluate_envelope(armature_obj.matrix_world.copy().inverted() * (mesh_obj.matrix_world * vertex.co))
@@ -86,12 +99,13 @@ def create_cal3d_mesh(scene, mesh_obj,
 
 	# currently 1 material per mesh
 
+	blender_material = None
 	if len(mesh_data.materials) > 0:
 		blender_material = mesh_data.materials[0]
 	
 	cal3d_material_index = -1
 	for cal3d_material in cal3d_materials:
-		if cal3d_material.name == blender_material.name:
+		if (blender_material != None) and (cal3d_material.name == blender_material.name):
 			cal3d_material_index = cal3d_material.index
 
 	cal3d_submesh = SubMesh(cal3d_mesh, len(cal3d_mesh.submeshes),

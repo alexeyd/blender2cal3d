@@ -14,8 +14,8 @@ class Material:
 	def __init__(self, name, index, xml_version):
 		self.ambient = MaterialColor(255, 255, 255, 255)
 		self.diffuse = MaterialColor(255, 255, 255, 255)
-		self.specular = MaterialColor(255, 255, 255, 255)
-		self.shininess = 1.0
+		self.specular = MaterialColor(0, 0, 0, 255)
+		self.shininess = 0.0
 		self.maps_filenames = []
     
 		self.name = name
