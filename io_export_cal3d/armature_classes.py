@@ -36,7 +36,12 @@ class Skeleton:
 
 
 class Bone:
-	def __init__(self, skeleton, parent, name, loc, rot, lloc, lquat):
+	def __init__(self, skeleton, parent, name, loc, rot):
+		'''
+		loc is the translation from the parent coordinate frame to the tail of the bone
+		rot is the rotation from the parent coordinate frame to the tail of the bone
+		'''
+		
 		self.parent = parent
 		self.name = name
 		self.children = []
@@ -44,12 +49,24 @@ class Bone:
 
 		self.loc = loc.copy()
 		self.quat = rot.copy()
-
-		if parent:
+		
+		if parent != None:
 			parent.children.append(self)
+			self.translationAbsolute = (parent.rotationAbsolute.inverted() * self.loc) + parent.translationAbsolute
+			self.rotationAbsolute = self.quat * parent.rotationAbsolute
+		else:
+			self.translationAbsolute = self.loc
+			self.rotationAbsolute = self.quat
 
-		self.lquat = lquat
-		self.lloc = lloc
+		# Cal3d does the calculation by:
+		# translationBoneSpace = coreBoneTranslationBoneSpace * boneAbsRotInAnimPose + boneAbsPosInAnimPose
+		# transformMatrix = coreBoneRotBoneSpace * boneAbsRotInAnimPose
+		# v = mesh * transformMatrix + translationBoneSpace
+	
+		#print("Bone {} rA {}\n tA {}\n".format(name, self.rotationAbsolute, self.translationAbsolute))
+	
+		self.lquat = self.rotationAbsolute.inverted()
+		self.lloc = -(self.rotationAbsolute * self.translationAbsolute)
 		
 		self.skeleton = skeleton
 		self.index = skeleton.next_bone_id

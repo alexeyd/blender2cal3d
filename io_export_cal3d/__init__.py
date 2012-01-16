@@ -6,7 +6,8 @@ bl_info = \
             "Damien McGinnes, "           \
             "David Young, "               \
             "Alexey Dorokhov, "           \
-            "Matthias Ferch",
+            "Matthias Ferch, "             \
+            "Peter Amstutz",
   "blender": (2, 5, 8),
   "api": 35622,
   "location": "File > Export > Cal3D (.cfg)",
@@ -81,7 +82,7 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 	imagepath_prefix = StringProperty(name="Image Path Prefix",
 									  default="")
 									  
-	base_rotation = FloatVectorProperty(name="Base Rotation", 
+	base_rotation = FloatVectorProperty(name="Base Rotation (XYZ)", 
 										default = (0.0, 0.0, 0.0),
 										subtype="EULER")
 
@@ -148,13 +149,15 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 		base_translation = mathutils.Vector([0.0, 0.0, 0.0])
 		base_rotation = mathutils.Euler([self.base_rotation[0],
 		                                 self.base_rotation[1],
-		                                 self.base_rotation[2]]).to_matrix()
+		                                 self.base_rotation[2]], 'XYZ').to_matrix()
 		base_scale = self.base_scale
 		fps = self.fps
 		
+		visible_objects = [ob for ob in context.scene.objects if ob.is_visible(context.scene)]
+		
 		# Export armatures
 		try:
-			for obj in context.scene.objects:
+			for obj in visible_objects:
 				if obj.type == "ARMATURE":
 					if cal3d_skeleton:
 						raise RuntimeError("Only one armature is supported per scene")
@@ -172,7 +175,7 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 		try:
 			cal3d_materials = create_cal3d_materials(cal3d_dirname, self.imagepath_prefix, 900)
 
-			for obj in context.scene.objects:
+			for obj in visible_objects:
 				if obj.type == "MESH" and obj.is_visible(context.scene):
 					cal3d_meshes.append(create_cal3d_mesh(context.scene, obj, 
 														  cal3d_skeleton,
@@ -354,6 +357,7 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 		row.prop(self, "export_cfg")
 
 	def invoke(self, context, event):
+		
 		self.fps = context.scene.render.fps
 		sc = ""
 		if len(bpy.data.scenes) > 1:
@@ -363,7 +367,19 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 		self.skeleton_prefix = pre
 		self.anim_prefix = pre
 		self.material_prefix = pre
-		return super(ExportCal3D, self).invoke(context, event)
+		r = super(ExportCal3D, self).invoke(context, event)
+		
+		print(bpy.context.active_operator)
+		#preset = bpy.utils.preset_find("default", "operator\\cal3d_model.cfg", display_name=False)
+		#print("preset is " + preset)
+		#orig = context["active_operator"]
+		#try:
+		#	bpy.context["active_operator"] = self
+		#	bpy.ops.script.execute_preset(context_copy, filepath=preset, menu_idname="WM_MT_operator_presets")
+		#finally:
+		#	context["active_operator"] = orig
+		
+		return r
 
 def menu_func_export(self, context):
 	self.layout.operator(ExportCal3D.bl_idname, text="Cal3D")
