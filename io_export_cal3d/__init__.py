@@ -6,7 +6,8 @@ bl_info = \
             "Damien McGinnes, "           \
             "David Young, "               \
             "Alexey Dorokhov, "           \
-            "Matthias Ferch",
+            "Matthias Ferch, "             \
+            "Peter Amstutz",
   "blender": (2, 5, 8),
   "api": 35622,
   "location": "File > Export > Cal3D (.cfg)",
@@ -29,24 +30,16 @@ if "bpy" in locals():
 	if "export_mesh" in locals():
 		imp.reload(export_mesh)
 
-	if "armature_classes" in locals():
-		imp.reload(armature_classes)
-
-	if "export_armature" in locals():
-		imp.reload(export_armature)
-
-	if "action_classes" in locals():
-		imp.reload(action_classes)
-
-	if "export_action" in locals():
-		imp.reload(export_action)
 
 import bpy
-from bpy.props import BoolVectorProperty,  \
-                      FloatProperty,       \
-                      BoolProperty,       \
-                      StringProperty,      \
-                      FloatVectorProperty, \
+from bpy import ops
+from bpy import context
+from bpy.props import BoolProperty,			\
+                      EnumProperty,			\
+                      CollectionProperty,	\
+                      FloatProperty,		\
+                      StringProperty,		\
+                      FloatVectorProperty,	\
                       IntProperty
 
 
@@ -56,7 +49,8 @@ from bpy_extras.io_utils import ExportHelper, ImportHelper
 import mathutils
 
 import os.path
-
+import sys
+import traceback
 
 class ExportCal3D(bpy.types.Operator, ExportHelper):
 	'''Save Cal3d Files'''
@@ -66,117 +60,74 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 	bl_options = {'PRESET'}
 
 	filename_ext = ".cfg"
-	filter_glob = StringProperty(default="*.cfg;*.xsf;*.xaf;*.xmf;*.xrf",
-	                             options={'HIDDEN'})
+	filter_glob = StringProperty(default="*.cfg;*.xsf;*.xaf;*.xmf;*.xrf;*.csf;*.caf;*.cmf;*.crf",
+								 options={'HIDDEN'})
 
-    # List of operator properties, the attributes will be assigned
-    # to the class instance from the operator settings before calling.
+	# List of operator properties, the attributes will be assigned
+	# to the class instance from the operator settings before calling.
 
-    # context group
-	filename_prefix = StringProperty(name="Filename Prefix", 
-	                                 default="model_")
+	# context group
+	mesh_prefix = StringProperty(name="Mesh Prefix", 
+									 default="model_")
+									 
+	skeleton_prefix = StringProperty(name="Skeleton Prefix", 
+									 default="")
+									 
+	anim_prefix = StringProperty(name="Animation Prefix",
+									  default="")
+									  
+	material_prefix = StringProperty(name="Material Prefix",
+									  default="")
+	
 	imagepath_prefix = StringProperty(name="Image Path Prefix",
-	                                  default="model_")
+									  default="")
+									  
+	base_rotation = FloatVectorProperty(name="Base Rotation (XYZ)", 
+										default = (0.0, 0.0, 0.0),
+										subtype="EULER")
 
-	base_translation = FloatVectorProperty(name="Base Translation", 
-	                                       default = (0.0, 0.0, 0.0),
-	                                       subtype="TRANSLATION")
+	base_scale = FloatProperty(name="Base Scale",
+							   default=1.0)
+							   
+	fps = FloatProperty(name="Frame Rate",
+					  default=30.0)
 
-	base_rotation = FloatVectorProperty(name="Base Rotation", 
-	                                    default = (0.0, 0.0, 0.0),
-	                                    subtype="EULER")
-
-	base_scale = FloatProperty(name="Base Scale", default=1.0)
-
-	# that would be a cool feature once I finish debugging (=
-	mirror_boolvec = BoolVectorProperty(name = "Mirror", 
-	                                    default= (False, False, False),
-	                                    subtype="XYZ")
-
-	fps = FloatProperty(name="FPS", default=25.0)
-	cs_format = BoolProperty(name = ".CFG in CS XML format (experimental)", default= False)
-
-	path_mode = bpy_extras.io_utils.path_reference_mode
-
-
-
-	def export_cfg(self, filepath, cal3d_skeleton, cal3d_animations, cal3d_materials, cal3d_meshes):
-		cal3d_cfg_file = open(filepath, "wt")
-
-		if cal3d_skeleton:
-			skeleton_filename = self.filename_prefix + cal3d_skeleton.name + ".xsf"
-			cal3d_cfg_file.write("skeleton={0}\n".format(skeleton_filename))
-
-		for cal3d_animation in cal3d_animations:
-			animation_filename = self.filename_prefix + cal3d_animation.name + ".xaf"
-			cal3d_cfg_file.write("animation={0}\n".format(animation_filename))
-
-		for cal3d_material in cal3d_materials:
-			material_filename = self.filename_prefix + cal3d_material.name + ".xrf"
-			cal3d_cfg_file.write("material={0}\n".format(material_filename))
-
-		for cal3d_mesh in cal3d_meshes:
-			mesh_filename = self.filename_prefix + cal3d_mesh.name + ".xmf"
-			cal3d_cfg_file.write("mesh={0}\n".format(mesh_filename))
-
-		cal3d_cfg_file.close()
-
-
-	# yes, that function is a fast hack. shame on me (=
-	def export_xml_cfg(self, filepath, cal3d_skeleton, cal3d_animations, cal3d_materials, cal3d_meshes):
-		cal3d_cfg_file = open(filepath, "wt")
-		cal3d_cfg_file.write("<!--\n#\n# CS cal3d model xml file\n#\n# model: {0}\n#\n-->\n".format(filepath))
-		cal3d_cfg_file.write("<library>\n")
-		cal3d_cfg_file.write("    <shaders><file>/shader/lighting/lighting_character.xml</file></shaders>\n")
-
-		cal3d_cfg_file.write("    <textures>\n")
-		for cal3d_material in cal3d_materials:
-			cal3d_cfg_file.write("       <texture name=\"{0}\">\n".format(cal3d_material.maps_filenames[0]))
-			cal3d_cfg_file.write("           <file>{0}</file>\n".format(cal3d_material.maps_filenames[0]))
-			cal3d_cfg_file.write("       </texture>\n")
-		cal3d_cfg_file.write("    </textures>\n")
-
-		cal3d_cfg_file.write("    <materials>\n")
-		for cal3d_material in cal3d_materials:
-			cal3d_cfg_file.write("        <material name=\"{0}\">\n".format(cal3d_material.name))
-			cal3d_cfg_file.write("            <shader type=\"depthwrite\">*null</shader>\n")
-			cal3d_cfg_file.write("            <shader type=\"base\">lighting_character</shader>\n")
-			cal3d_cfg_file.write("            <shader type=\"diffuse\">lighting_character</shader>\n")
-			cal3d_cfg_file.write("            <shadervar name=\"tex diffuse\" type=\"texture\">{0}</shadervar>\n".format(cal3d_material.maps_filenames[0]))
-			cal3d_cfg_file.write("            <shadervar name=\"color modulation\" type=\"vector4\">1,1,1,1</shadervar>\n")
-			cal3d_cfg_file.write("            <shadervar name=\"specular\" type=\"vector3\">0,0,0</shadervar>\n")
-			cal3d_cfg_file.write("        </material>\n".format(cal3d_material.name))
-		cal3d_cfg_file.write("    </materials>\n")
-
-		cal3d_cfg_file.write("    <meshfact name=\"{0}\">\n".format(filepath))
-		cal3d_cfg_file.write("        <plugin>crystalspace.mesh.loader.factory.sprite.cal3d</plugin>\n")
-		cal3d_cfg_file.write("        <params>\n")
-
-		skeleton_filename = self.filename_prefix + cal3d_skeleton.name + ".csf"
-		cal3d_cfg_file.write("            <skeleton file=\"{0}\" />\n".format(skeleton_filename))
-
-		
-		for cal3d_animation in cal3d_animations:
-			animation_filename = self.filename_prefix + cal3d_animation.name + ".caf"
-			cal3d_cfg_file.write("            <animation file=\"{0}\" name=\"{1}\" type=\"action\"/>\n".format(animation_filename, animation_filename))
-
-
-		for cal3d_mesh in cal3d_meshes:
-			mesh_filename = self.filename_prefix + cal3d_mesh.name + ".cmf"
-			mesh_material_name = ""
-			submesh = cal3d_mesh.submeshes[0]
-			for cal3d_material in cal3d_materials:
-				if cal3d_material.index == submesh.material_id:
-					mesh_material_name = cal3d_material.name
-					break
-			cal3d_cfg_file.write("            <mesh file=\"{0}\" material=\"{1}\" name=\"{2}\" />\n".format(mesh_filename, mesh_material_name, cal3d_mesh.name))
-		cal3d_cfg_file.write("        </params>\n")
-		cal3d_cfg_file.write("    </meshfact>\n")
-		cal3d_cfg_file.write("</library>\n")
-
-		cal3d_cfg_file.close()
-
-
+	#path_mode = bpy_extras.io_utils.path_reference_mode
+	
+	use_groups = BoolProperty(name="Vertex Groups", description="Export the meshes using vertex groups.", default=True)
+	#use_envelopes = BoolProperty(name="Envelopes", description="Export the meshes using bone envelopes.", default=True)
+	
+	skeleton_binary_bool = EnumProperty(
+            name="Skeleton Filetype",
+            items=(('binary', "Binary (.CSF)", "Export a binary skeleton"),
+                   ('xml', "XML (.XSF)", "Export an xml skeleton"),
+                   ),
+			default='binary'
+            )
+	mesh_binary_bool = EnumProperty(
+            name="Mesh Filetype",
+            items=(('binary', "Binary (.CMF)", "Export a binary mesh"),
+                   ('xml', "XML (.XMF)", "Export an xml mesh"),
+                   ),
+			default='binary'
+            )
+	animation_binary_bool = EnumProperty(
+            name="Animation Filetype",
+            items=(('binary', "Binary (.CAF)", "Export a binary animation"),
+                   ('xml', "XML (.XAF)", "Export an xml animation"),
+                   ),
+			default='binary'
+            )
+	material_binary_bool = EnumProperty(
+            name="Material Filetype",
+            items=(('binary', "Binary (.CRF)", "Export a binary material"),
+                   ('xml', "XML (.XRF)", "Export an xml material"),
+                   ),
+			default='xml'
+            )
+	
+	export_cfg = BoolProperty(name="Export the config file (.CFG)", description="Whether or not to export the .CFG file.", default=False)
+	
 	def execute(self, context):
 		from . import export_mesh
 		from . import export_armature
@@ -192,66 +143,47 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 		cal3d_materials = []
 		cal3d_meshes = []
 		cal3d_animations = []
+		armature_obj = None
 
-		# model will be transformed during export if needed
-		base_translation = mathutils.Vector([self.base_translation[0],
-		                                     self.base_translation[1],
-		                                     self.base_translation[2]])
-
+		# base_translation, base_rotation, and base_scale are user adjustments to the export
+		base_translation = mathutils.Vector([0.0, 0.0, 0.0])
 		base_rotation = mathutils.Euler([self.base_rotation[0],
 		                                 self.base_rotation[1],
-		                                 self.base_rotation[2]]).to_matrix()
-
-		base_scale = mathutils.Matrix.Scale(self.base_scale, 4)
-
-		if(self.mirror_boolvec[0]):
-			base_scale[0][0] = -base_scale[0][0]
-
-		if(self.mirror_boolvec[1]):
-			base_scale[1][1] = -base_scale[1][1]
-
-		if(self.mirror_boolvec[2]):
-			base_scale[2][2] = -base_scale[2][2]
-
+		                                 self.base_rotation[2]], 'XYZ').to_matrix()
+		base_scale = self.base_scale
 		fps = self.fps
-
-		armature_scale = mathutils.Matrix().to_4x4()
-		armature_scale.identity()
-
-
+		
+		visible_objects = [ob for ob in context.scene.objects if ob.is_visible(context.scene)]
+		
 		# Export armatures
 		try:
-			for obj in context.selected_objects:
+			for obj in visible_objects:
 				if obj.type == "ARMATURE":
 					if cal3d_skeleton:
-						raise RuntimeError("Only one armature is supported")
-
+						raise RuntimeError("Only one armature is supported per scene")
+					armature_obj = obj
 					cal3d_skeleton = create_cal3d_skeleton(obj, obj.data,
-					                                       base_rotation,
-					                                       base_translation,
+					                                       base_rotation.copy(),
+					                                       base_translation.copy(),
 					                                       base_scale, 900)
-					(loc, rot, scale) = obj.matrix_world.decompose()
-					armature_scale[0][0] = scale.x
-					armature_scale[1][1] = scale.y
-					armature_scale[2][2] = scale.z
-
-		except RuntimeError as e:
+		except Exception as e:
 			print("###### ERROR DURING ARMATURE EXPORT ######")
-			print(e)
+			traceback.print_exc()
 			return {"FINISHED"}
 
-		# Export meshes
+		# Export meshes and materials
 		try:
-			cal3d_materials = create_cal3d_materials(900)
+			cal3d_materials = create_cal3d_materials(cal3d_dirname, self.imagepath_prefix, 900)
 
-			for obj in context.selected_objects:
-				if obj.type == "MESH":
-					cal3d_meshes.append(create_cal3d_mesh(context. scene, obj, 
-					                                      cal3d_skeleton,
+			for obj in visible_objects:
+				if obj.type == "MESH" and obj.is_visible(context.scene):
+					cal3d_meshes.append(create_cal3d_mesh(context.scene, obj, 
+														  cal3d_skeleton,
 														  cal3d_materials,
-					                                      base_rotation,
-					                                      base_translation,
-					                                      base_scale, 900))
+														  base_rotation,
+														  base_translation,
+														  base_scale, 900,
+														  self.use_groups, False, armature_obj))
 		except RuntimeError as e:
 			print("###### ERROR DURING MESH EXPORT ######")
 			print(e)
@@ -263,8 +195,8 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 			if cal3d_skeleton:
 				for action in bpy.data.actions:
 					cal3d_animation = create_cal3d_animation(cal3d_skeleton,
-					                                         action, fps,
-					                                         900)
+															 action, fps,
+															 base_scale, 900)
 					if cal3d_animation:
 						cal3d_animations.append(cal3d_animation)
 						
@@ -276,48 +208,181 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 
 
 		if cal3d_skeleton:
-			skeleton_filename = self.filename_prefix + cal3d_skeleton.name + ".xsf"
-			skeleton_filepath = os.path.join(cal3d_dirname, skeleton_filename)
-
-			cal3d_skeleton_file = open(skeleton_filepath, "wt")
-			cal3d_skeleton_file.write(cal3d_skeleton.to_cal3d_xml())
+			if self.skeleton_binary_bool == 'binary':
+				skeleton_filename = self.skeleton_prefix + cal3d_skeleton.name + ".csf"
+				skeleton_filepath = os.path.join(cal3d_dirname, skeleton_filename)
+				cal3d_skeleton_file = open(skeleton_filepath, "wb")
+				cal3d_skeleton.to_cal3d_binary(cal3d_skeleton_file)
+			else:
+				skeleton_filename = self.skeleton_prefix + cal3d_skeleton.name + ".xsf"
+				skeleton_filepath = os.path.join(cal3d_dirname, skeleton_filename)
+				cal3d_skeleton_file = open(skeleton_filepath, "wt")
+				cal3d_skeleton_file.write(cal3d_skeleton.to_cal3d_xml())
 			cal3d_skeleton_file.close()
+			print("Wrote skeleton '%s'" % (skeleton_filename))
 
+		i = 0
 		for cal3d_material in cal3d_materials:
-			material_filename = self.filename_prefix + cal3d_material.name + ".xrf"
-			material_filepath = os.path.join(cal3d_dirname, material_filename)
-
-			cal3d_material_file = open(material_filepath, "wt")
-			cal3d_material_file.write(cal3d_material.to_cal3d_xml())
+			if self.material_binary_bool == 'binary':
+				material_filename = self.material_prefix + cal3d_material.name + ".crf"
+				material_filepath = os.path.join(cal3d_dirname, material_filename)
+				cal3d_material_file = open(material_filepath, "wb")
+				cal3d_material.to_cal3d_binary(cal3d_material_file)
+			else:
+				material_filename = self.material_prefix + cal3d_material.name + ".xrf"
+				material_filepath = os.path.join(cal3d_dirname, material_filename)
+				cal3d_material_file = open(material_filepath, "wt")
+				cal3d_material_file.write(cal3d_material.to_cal3d_xml())
 			cal3d_material_file.close()
+			print("Wrote material '%s' with index %s" % (material_filename, i))
+			i += 1
 
 
 		for cal3d_mesh in cal3d_meshes:
-			mesh_filename = self.filename_prefix + cal3d_mesh.name + ".xmf"
-			mesh_filepath = os.path.join(cal3d_dirname, mesh_filename)
-
-			cal3d_mesh_file = open(mesh_filepath, "wt")
-			cal3d_mesh_file.write(cal3d_mesh.to_cal3d_xml())
+			if self.mesh_binary_bool == 'binary':
+				mesh_filename = self.mesh_prefix + cal3d_mesh.name + ".cmf"
+				mesh_filepath = os.path.join(cal3d_dirname, mesh_filename)
+				cal3d_mesh_file = open(mesh_filepath, "wb")
+				cal3d_mesh.to_cal3d_binary(cal3d_mesh_file)
+			else:
+				mesh_filename = self.mesh_prefix + cal3d_mesh.name + ".xmf"
+				mesh_filepath = os.path.join(cal3d_dirname, mesh_filename)
+				cal3d_mesh_file = open(mesh_filepath, "wt")
+				cal3d_mesh_file.write(cal3d_mesh.to_cal3d_xml())
 			cal3d_mesh_file.close()
-
+			print("Wrote mesh '%s' with materials %s" % (mesh_filename, [x.material_id for x in cal3d_mesh.submeshes]))
+			
 		for cal3d_animation in cal3d_animations:
-			animation_filename = self.filename_prefix + cal3d_animation.name + ".xaf"
-			animation_filepath = os.path.join(cal3d_dirname, animation_filename)
-
-			cal3d_animation_file = open(animation_filepath, "wt")
-			cal3d_animation_file.write(cal3d_animation.to_cal3d_xml())
+			if self.animation_binary_bool == 'binary':
+				animation_filename = self.anim_prefix + cal3d_animation.name + ".caf"
+				animation_filepath = os.path.join(cal3d_dirname, animation_filename)
+				cal3d_animation_file = open(animation_filepath, "wb")
+				cal3d_animation.to_cal3d_binary(cal3d_animation_file)
+			else:
+				animation_filename = self.anim_prefix + cal3d_animation.name + ".xaf"
+				animation_filepath = os.path.join(cal3d_dirname, animation_filename)
+				cal3d_animation_file = open(animation_filepath, "wt")
+				cal3d_animation_file.write(cal3d_animation.to_cal3d_xml())
 			cal3d_animation_file.close()
+			print("Wrote animation '%s'" % (animation_filename))
 
-		if self.cs_format:
-			self.export_xml_cfg(self.filepath, cal3d_skeleton, cal3d_animations, cal3d_materials, cal3d_meshes)
-		else:
-			self.export_cfg(self.filepath, cal3d_skeleton, cal3d_animations, cal3d_materials, cal3d_meshes)
+
+		if self.export_cfg:
+			cal3d_cfg_file = open(self.filepath, "wt")
+			cal3d_cfg_file.write("path={0}\n".format("data\\models\\" + os.path.basename(self.filepath[:-4])+ "\\"))
+			cal3d_cfg_file.write("scale=0.01f\n")
+			
+			if cal3d_skeleton:
+				if self.skeleton_binary_bool == 'binary':
+					skeleton_filename = self.skeleton_prefix + cal3d_skeleton.name + ".csf"
+				else:
+					skeleton_filename = self.skeleton_prefix + cal3d_skeleton.name + ".xsf"
+				cal3d_cfg_file.write("skeleton={0}\n".format(skeleton_filename))
+
+			for cal3d_animation in cal3d_animations:
+				if self.animation_binary_bool == 'binary':
+					animation_filename = self.anim_prefix + cal3d_animation.name + ".caf"
+				else:
+					animation_filename = self.anim_prefix + cal3d_animation.name + ".xaf"
+				cal3d_cfg_file.write("animation={0}\n".format(animation_filename))
+
+			for cal3d_material in cal3d_materials:
+				if self.material_binary_bool == 'binary':
+					material_filename = self.material_prefix + cal3d_material.name + ".crf"
+				else:
+					material_filename = self.material_prefix + cal3d_material.name + ".xrf"
+				cal3d_cfg_file.write("material={0}\n".format(material_filename))
+
+			for cal3d_mesh in cal3d_meshes:
+				if self.mesh_binary_bool == 'binary':
+					mesh_filename = self.mesh_prefix + cal3d_mesh.name + ".cmf"
+				else:
+					mesh_filename = self.mesh_prefix + cal3d_mesh.name + ".xmf"
+				cal3d_cfg_file.write("mesh={0}\n".format(mesh_filename))
+
+			cal3d_cfg_file.close()
 
 		return {"FINISHED"}
 
+	def draw(self, context):
+		layout = self.layout
+		
+		row = layout.row(align=True)
+		row.prop(self, "skeleton_prefix")
+		
+		row = layout.row(align=True)
+		row.prop(self, "mesh_prefix")
+		
+		row = layout.row(align=True)
+		row.prop(self, "anim_prefix")
+		
+		row = layout.row(align=True)
+		row.prop(self, "material_prefix")
+		
+		row = layout.row(align=True)
+		row.prop(self, "imagepath_prefix")
+		
+		row = layout.row(align=True)
+		row.prop(self, "base_rotation")
+		
+		row = layout.row(align=True)
+		row.prop(self, "base_scale")
+		
+		row = layout.row(align=True)
+		row.prop(self, "fps")
+		
+		#row = layout.row(align=True)
+		#row.prop(self, "path_mode")
+		
+		row = layout.row(align=True)
+		row.label(text="Export with:")
+		row = layout.row(align=True)
+		row.prop(self, "use_groups")
+		#row.prop(self, "use_envelopes")
+		
+		row = layout.row(align=True)
+		row.label(text="Skeleton")
+		row.prop(self, "skeleton_binary_bool", expand=True)
+		row = layout.row(align=True)
+		row.label(text="Mesh")
+		row.prop(self, "mesh_binary_bool", expand=True)
+		row = layout.row(align=True)
+		row.label(text="Animation")
+		row.prop(self, "animation_binary_bool", expand=True)
+		row = layout.row(align=True)
+		row.label(text="Material")
+		row.prop(self, "material_binary_bool", expand=True)
+		
+		row = layout.row(align=True)
+		row.prop(self, "export_cfg")
+
+	def invoke(self, context, event):
+		
+		self.fps = context.scene.render.fps
+		sc = ""
+		if len(bpy.data.scenes) > 1:
+			sc = context.scene.name + "_"
+		pre = os.path.splitext(os.path.basename(bpy.data.filepath))[0] + "_" + sc
+		self.mesh_prefix = pre
+		self.skeleton_prefix = pre
+		self.anim_prefix = pre
+		self.material_prefix = pre
+		r = super(ExportCal3D, self).invoke(context, event)
+		
+		print(bpy.context.active_operator)
+		#preset = bpy.utils.preset_find("default", "operator\\cal3d_model.cfg", display_name=False)
+		#print("preset is " + preset)
+		#orig = context["active_operator"]
+		#try:
+		#	bpy.context["active_operator"] = self
+		#	bpy.ops.script.execute_preset(context_copy, filepath=preset, menu_idname="WM_MT_operator_presets")
+		#finally:
+		#	context["active_operator"] = orig
+		
+		return r
 
 def menu_func_export(self, context):
-	self.layout.operator(ExportCal3D.bl_idname, text="Cal3D (.cfg)")
+	self.layout.operator(ExportCal3D.bl_idname, text="Cal3D")
 
 
 def register():
@@ -332,4 +397,3 @@ def unregister():
 
 if __name__ == "__main__":
 	register()
-

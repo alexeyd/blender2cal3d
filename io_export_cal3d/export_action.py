@@ -76,19 +76,20 @@ def track_sort_key(track):
 
 
 def create_cal3d_animation(cal3d_skeleton, action, fps, 
-                           xml_version):
+                           base_scale, xml_version):
 	cal3d_animation = Animation(action.name, xml_version)
 
-	max_keyframe = 0.0
+	last_keyframe = 0.0
+	first_keyframe = 1e308
 
 	for action_group in action.groups:
 		cal3d_bone = get_bone(action_group.name, cal3d_skeleton)
 		if not cal3d_bone:
 			continue
 
-		cal3d_rot_bone = cal3d_bone.parent
+		#cal3d_bone = cal3d_bone.parent # use rotator bone
 
-		cal3d_rot_track = Track(cal3d_rot_bone.index)
+		cal3d_track = Track(cal3d_bone.index)
 
 		loc_x_fcu = get_action_group_fcurve(action_group, "location", 0)
 		loc_y_fcu = get_action_group_fcurve(action_group, "location", 1)
@@ -117,36 +118,56 @@ def create_cal3d_animation(cal3d_skeleton, action, fps,
 		# remove duplicates
 		keyframes_set = set(keyframes_list)
 		keyframes_list = list(keyframes_set)
-		keyframes_list.sort()
+		#keyframes_list.sort()
+		
+		if len(keyframes_list) == 0:
+			continue
 
-		if len(keyframes_list) > 0:
-			if max_keyframe < keyframes_list[len(keyframes_list)-1]:
-				max_keyframe = keyframes_list[len(keyframes_list)-1]
-
+		for keyframe in keyframes_list:
+			if keyframe < first_keyframe:
+				first_keyframe = keyframe
+			if keyframe > last_keyframe:
+				last_keyframe = keyframe
+		
+		tmp_keyframes = []
 		for keyframe in keyframes_list:
 			dloc = evaluate_loc(loc_x_fcu, loc_y_fcu, loc_z_fcu, keyframe)
 			dquat = evaluate_quat(quat_x_fcu, quat_y_fcu, 
 			                      quat_z_fcu, quat_w_fcu, keyframe)
 
-			quat = cal3d_rot_bone.quat.copy()
-			quat.rotate(dquat)
+			dloc = dloc * base_scale
+			dloc.rotate(cal3d_bone.quat.inverted())
+			loc = cal3d_bone.loc + dloc
+			
+			quat = (cal3d_bone.quat.inverted() * dquat).inverted()
 
-			dloc.x = dloc.x * cal3d_rot_bone.scale.x
-			dloc.y = dloc.y * cal3d_rot_bone.scale.y
-			dloc.z = dloc.z * cal3d_rot_bone.scale.z
-			dloc.rotate(cal3d_rot_bone.quat)
-			loc = cal3d_rot_bone.loc + dloc
+			cal3d_keyframe = KeyFrame((keyframe - first_keyframe) / fps, loc, quat)
+			tmp_keyframes.append(cal3d_keyframe)
+			
+		cal3d_track.keyframes = quicksort(tmp_keyframes)
 
-			cal3d_rot_keyframe = KeyFrame((keyframe - 1.0)/fps, loc, quat)
-			cal3d_rot_track.keyframes.append(cal3d_rot_keyframe)
-
-		if len(cal3d_rot_track.keyframes) > 0:
-			cal3d_animation.tracks.append(cal3d_rot_track)
+		if len(cal3d_track.keyframes) > 0:
+			cal3d_animation.tracks.append(cal3d_track)
 	
 	if len(cal3d_animation.tracks) > 0:
-		cal3d_animation.duration = (max_keyframe - 1.0) / fps
+		cal3d_animation.duration = ((last_keyframe - first_keyframe) / fps)
 		cal3d_animation.tracks.sort(key=track_sort_key)
 		return cal3d_animation
 
 	return None
 
+def quicksort(sort):
+	less = []
+	greater = []
+	if len(sort) <= 1:
+		return sort
+		
+	pivot = sort.pop(floor(len(sort) / 2))
+	
+	for frame in sort:
+		if frame.time <= pivot.time:
+			less.append(frame)
+		else:
+			greater.append(frame)
+	
+	return quicksort(less) + [pivot] + quicksort(greater)

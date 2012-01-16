@@ -11,84 +11,66 @@ from .armature_classes import *
 def treat_bone(b, scale, parent, skeleton):
 	# skip bones that start with _
 	# also skips children of that bone so be careful
-	if len(b.name) == 0:
-		return
-
-	if b.name[0] == '_':
+	if len(b.name) == 0 or  b.name[0] == '_':
 		return
 
 	name = b.name
 
-	bone_head = b.head.copy()
-	bone_tail = b.tail.copy()
-
-	# convert head translation to bone if needed
-	if bone_head.length != 0: 
-		head_bone_loc = bone_head.copy()
-		head_bone_loc.x *= scale.x
-		head_bone_loc.y *= scale.y
-		head_bone_loc.z *= scale.z
-		head_bone_rot = Matrix().to_3x3()
-		head_bone_rot.identity()
-		head_bone = Bone(skeleton, parent, name+"_head",
-		                 head_bone_loc, head_bone_rot, scale.copy())
-
-		parent = head_bone
-
-
-	# each blender bone is mapped to 2 cal3d bones:
-	# rotator and translator
-	rotator_rot = b.matrix.copy()
-	rotator_loc = Vector([0.0, 0.0, 0.0])
-	rotator_bone = Bone(skeleton, parent, name+"_rotator",
-	                    rotator_loc, rotator_rot, scale.copy())
-	parent = rotator_bone
-
-
-	translator_loc = (bone_tail - bone_head)
-	translator_loc.x *= scale.x
-	translator_loc.y *= scale.y
-	translator_loc.z *= scale.z
-	translator_loc.rotate(b.matrix.inverted())
-	translator_rot = Matrix().to_3x3()
-	translator_rot.identity()
-	bone = Bone(skeleton, parent, name, 
-	            translator_loc, translator_rot, scale.copy())
+	bone_matrix = b.matrix_local.copy()
+	if b.parent != None:
+		# isolate the parent -> child transform
+		bone_matrix = b.parent.matrix_local.inverted() * bone_matrix
+	bone_trans = bone_matrix.to_translation() * scale
+	b_inv_quat = bone_matrix.to_quaternion().inverted()
+		
+	bone = Bone(skeleton, parent, name, bone_trans, b_inv_quat)
 
 	for child in b.children:
 		treat_bone(child, scale, bone, skeleton)
-
+	
+	# This adds an extra bone to extremities; this is
+	# purely a hack to make these bones show up in the Cal3D viewer 
+	# for debugging.  These "leaf" bones otherwise have
+	# no effect so they are not added by default.
+	add_leaf_bones = False
+	if len(b.children) == 0 and add_leaf_bones:
+		tail = scale * (b.tail - b.head)
+		bone = Bone(skeleton, bone, name + "_leaf",
+					b.matrix.inverted() * tail,
+					Quaternion())
 
 def create_cal3d_skeleton(arm_obj, arm_data,
-                          base_rotation_orig,
-                          base_translation_orig,
-                          base_scale_orig,
-                          xml_version):
+						  base_rotation,
+						  base_translation,
+						  base_scale,
+						  xml_version):
+	
+	prevpose = arm_data.pose_position		  
+	arm_data.pose_position = 'REST'
+						  
 	skeleton = Skeleton(arm_obj.name, xml_version)
+	
+	base_matrix =   Matrix.Scale(base_scale, 4) \
+				  * base_rotation.to_4x4() \
+				  * Matrix.Translation(base_translation) \
+				  * arm_obj.matrix_world
 
-	base_translation = base_translation_orig.copy()
-	base_rotation = base_rotation_orig.copy()
-	base_scale = base_scale_orig.copy()
+	(total_translation, total_rotation, total_scale) = base_matrix.decompose()
+	
+	service_root = Bone(skeleton, None, "_root",
+						total_translation.copy(), 
+						total_rotation.inverted())
 
-	base_matrix = base_scale                            * \
-	              base_rotation.to_4x4()                * \
-	              Matrix.Translation(base_translation)  * \
-	              arm_obj.matrix_world.copy()
-
-	(loc, rot, scale) = base_matrix.decompose()
-
-	total_translation = loc.copy()
-	total_rotation = rot.to_matrix().to_3x3()
-	total_scale = scale.copy()
-
-	service_root = Bone(skeleton, None, "_service_root",
-	                    total_translation.copy(),
-						total_rotation.copy(),
-	                    total_scale.copy())
-
+	scalematrix = Matrix()
+	scalematrix[0][0] = total_scale.x
+	scalematrix[1][1] = total_scale.y
+	scalematrix[2][2] = total_scale.z
+	
 	for bone in arm_data.bones.values():
 		if not bone.parent and bone.name[0] != "_":
-			treat_bone(bone, total_scale, service_root, skeleton)
+			treat_bone(bone, scalematrix, service_root, skeleton)
+			
+	arm_data.pose_position = prevpose
 
 	return skeleton
 
