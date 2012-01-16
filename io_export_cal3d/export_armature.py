@@ -11,65 +11,30 @@ from .armature_classes import *
 def treat_bone(b, scale, parent, skeleton):
 	# skip bones that start with _
 	# also skips children of that bone so be careful
-	if len(b.name) == 0:
-		return
-
-	if b.name[0] == '_':
+	if len(b.name) == 0 or  b.name[0] == '_':
 		return
 
 	name = b.name
-	
-	if False:
-		# Scale the translation part of the armature -> bone matrix
-		scaled_matrix_local = (Matrix.Translation(scale * b.head_local)
-								* b.matrix_local.to_quaternion().to_matrix().to_4x4())
-								
-		# Calculate the transform from model space to joint space.
-		joint_coordinate_frame = world_matrix * scaled_matrix_local
+
+	bone_matrix = b.matrix_local.copy()
+	if b.parent != None:
+		# isolate the parent -> child transform
+		bone_matrix = b.parent.matrix_local.inverted() * bone_matrix
+	bone_trans = bone_matrix.to_translation() * scale
+	b_inv_quat = bone_matrix.to_quaternion().inverted()
 		
-		local_quat = joint_coordinate_frame.to_quaternion()
-		local_trans = local_quat.inverted() * (-joint_coordinate_frame.to_translation())
-		
-		if b.parent:
-			if b.parent.parent:
-				bone_trans = b.parent.matrix.inverted() * (scale * (b.parent.tail + b.head))
-			else:
-				bone_trans = b.parent.matrix_local.inverted() * (scale * (b.parent.tail + b.head))
-		else:
-			bone_trans = (scale * b.head)
-			
-		b_inv_quat = b.matrix.to_quaternion().inverted()
-	else:
-		bone_matrix = b.matrix_local.copy()
-		if b.parent != None:
-			# isolate the parent -> child transform
-			bone_matrix = b.parent.matrix_local.inverted() * bone_matrix
-		bone_trans = bone_matrix.to_translation() * scale
-		b_inv_quat = bone_matrix.to_quaternion().inverted()
-		
-	oneBone = True
-	if oneBone:
-		bone = Bone(skeleton, parent, name, bone_trans, b_inv_quat)
-	else:
-		# this works but doubling the number of bones is very undesirable
-		bone = Bone(skeleton, parent, name,
-							 (scale * b.head),
-							 b_inv_quat,
-							 local_trans,
-							 local_quat)
-		                     
-		bone = Bone(skeleton, bone, name + "_tail",
-							 b.matrix.inverted() * (scale * b.tail),
-							 Quaternion(),
-							 Vector(),
-							 Quaternion())
+	bone = Bone(skeleton, parent, name, bone_trans, b_inv_quat)
 
 	for child in b.children:
 		treat_bone(child, scale, bone, skeleton)
 	
-	if len(b.children) == 0 and oneBone:
+	# This adds an extra bone to extremities; this is
+	# purely a hack to make these bones show up in the Cal3D viewer 
+	# for debugging.  These "leaf" bones otherwise have
+	# no effect so they are not added by default.
+	add_leaf_bones = False
+	if len(b.children) == 0 and add_leaf_bones:
 		tail = scale * (b.tail - b.head)
-		#print("b.tail {} leaf trans {} tail {}".format(b.matrix.inverted() * b.tail, b.matrix.inverted() * (scale * b.tail), tail))
 		bone = Bone(skeleton, bone, name + "_leaf",
 					b.matrix.inverted() * tail,
 					Quaternion())

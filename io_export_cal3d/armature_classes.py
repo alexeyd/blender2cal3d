@@ -50,6 +50,15 @@ class Bone:
 		self.loc = loc.copy()
 		self.quat = rot.copy()
 		
+		# Cal3d does the vertex deform calculation by:
+		#   translationBoneSpace = coreBoneTranslationBoneSpace * boneAbsRotInAnimPose + boneAbsPosInAnimPose
+		#   transformMatrix = coreBoneRotBoneSpace * boneAbsRotInAnimPose
+		#   v = mesh * transformMatrix + translationBoneSpace
+		# To calculate "coreBoneTranslationBoneSpace" (ltrans) and "coreBoneRotBoneSpace" (lquat)
+		# we invert the absolute rotation and translation.
+		
+		# These calculations may look easy, but it took me three days to get it right.
+		
 		if parent != None:
 			parent.children.append(self)
 			self.translationAbsolute = (parent.rotationAbsolute.inverted() * self.loc) + parent.translationAbsolute
@@ -57,13 +66,6 @@ class Bone:
 		else:
 			self.translationAbsolute = self.loc
 			self.rotationAbsolute = self.quat
-
-		# Cal3d does the calculation by:
-		# translationBoneSpace = coreBoneTranslationBoneSpace * boneAbsRotInAnimPose + boneAbsPosInAnimPose
-		# transformMatrix = coreBoneRotBoneSpace * boneAbsRotInAnimPose
-		# v = mesh * transformMatrix + translationBoneSpace
-	
-		#print("Bone {} rA {}\n tA {}\n".format(name, self.rotationAbsolute, self.translationAbsolute))
 	
 		self.lquat = self.rotationAbsolute.inverted()
 		self.lloc = -(self.rotationAbsolute * self.translationAbsolute)
