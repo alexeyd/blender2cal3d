@@ -47,11 +47,15 @@ class Bone:
 		self.children = []
 		self.xml_version = skeleton.xml_version
 
-		self.loc = loc.copy()
+		self.child_loc = loc.copy()
 		self.quat = rot.copy()
 
 		if parent:
 			parent.children.append(self)
+			self.loc = parent.child_loc.copy()
+			self.loc.rotate(parent.quat.inverted())
+		else:
+			self.loc = Vector((0.0, 0.0, 0.0))
 
 		self.skeleton = skeleton
 		self.index = skeleton.next_bone_id
