@@ -153,7 +153,8 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 		base_scale = self.base_scale
 		fps = self.fps
 		
-		visible_objects = [ob for ob in context.scene.objects if ob.is_visible(context.scene)]
+		#visible_objects = [ob for ob in context.scene.objects if ob.is_visible(context.scene)]
+		visible_objects = context.selected_objects
 		
 		# Export armatures
 		try:

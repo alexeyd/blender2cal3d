@@ -49,7 +49,15 @@ class Bone:
 
 		self.loc = loc.copy()
 		self.quat = rot.copy()
-		
+
+		if parent:
+			parent.children.append(self)
+
+		self.skeleton = skeleton
+		self.index = skeleton.next_bone_id
+		skeleton.next_bone_id += 1
+		skeleton.bones.append(self)
+
 		# Cal3d does the vertex deform calculation by:
 		#   translationBoneSpace = coreBoneTranslationBoneSpace * boneAbsRotInAnimPose + boneAbsPosInAnimPose
 		#   transformMatrix = coreBoneRotBoneSpace * boneAbsRotInAnimPose
@@ -57,23 +65,23 @@ class Bone:
 		# To calculate "coreBoneTranslationBoneSpace" (ltrans) and "coreBoneRotBoneSpace" (lquat)
 		# we invert the absolute rotation and translation.
 		
-		# These calculations may look easy, but it took me three days to get it right.
+		self.translation_absolute = self.loc.copy()
+		self.rotation_absolute = self.quat.copy()
 		
-		if parent != None:
-			parent.children.append(self)
-			self.translationAbsolute = (parent.rotationAbsolute.inverted() * self.loc) + parent.translationAbsolute
-			self.rotationAbsolute = self.quat * parent.rotationAbsolute
-		else:
-			self.translationAbsolute = self.loc
-			self.rotationAbsolute = self.quat
+		if self.parent:
+			self.translation_absolute.rotate(self.parent.rotation_absolute)
+			self.translation_absolute += self.parent.translation_absolute
+
+			self.rotation_absolute.rotate(self.parent.rotation_absolute)
+			self.rotation_absolute.normalize()
 	
-		self.lquat = self.rotationAbsolute.inverted()
-		self.lloc = -(self.rotationAbsolute * self.translationAbsolute)
+		self.lquat = self.rotation_absolute.inverted()
+		self.lloc = -self.translation_absolute
+		self.lloc.rotate(self.lquat)
+
+		for child in self.children:
+			child.calc_bonespace()
 		
-		self.skeleton = skeleton
-		self.index = skeleton.next_bone_id
-		skeleton.next_bone_id += 1
-		skeleton.bones.append(self)
  
 
 	def to_cal3d_xml(self):
@@ -85,19 +93,19 @@ class Bone:
 		                                                         self.loc[1],
 		                                                         self.loc[2])
 
-		s += "	<ROTATION>{0} {1} {2} {3}</ROTATION>\n".format(self.quat.x,
-		                                                       self.quat.y,
-		                                                       self.quat.z,
-		                                                       self.quat.w)
+		s += "	<ROTATION>{0} {1} {2} {3}</ROTATION>\n".format(self.quat.inverted().x,
+		                                                       self.quat.inverted().y,
+		                                                       self.quat.inverted().z,
+		                                                       self.quat.inverted().w)
 
 		s += "	<LOCALTRANSLATION>{0} {1} {2}</LOCALTRANSLATION>\n".format(self.lloc[0],
 		                                                                   self.lloc[1],
 		                                                                   self.lloc[2])
 
-		s += "	<LOCALROTATION>{0} {1} {2} {3}</LOCALROTATION>\n".format(self.lquat.x, 
-		                                                                 self.lquat.y,
-		                                                                 self.lquat.z,
-		                                                                 self.lquat.w)
+		s += "	<LOCALROTATION>{0} {1} {2} {3}</LOCALROTATION>\n".format(self.lquat.inverted().x,
+		                                                                 self.lquat.inverted().y,
+		                                                                 self.lquat.inverted().z,
+		                                                                 self.lquat.inverted().w)
 		if self.parent:
 			s += "	<PARENTID>{0}</PARENTID>\n".format(self.parent.index)
 		else:
@@ -120,17 +128,17 @@ class Bone:
 		ar = array('f', [self.loc[0],
 						 self.loc[1],
 						 self.loc[2],
-						 self.quat.x,
-						 self.quat.y,
-						 self.quat.z,
-						 self.quat.w,
+						 self.quat.inverted().x,
+						 self.quat.inverted().y,
+						 self.quat.inverted().z,
+						 self.quat.inverted().w,
 						 self.lloc[0],
 						 self.lloc[1],
 						 self.lloc[2],
-						 self.lquat.x, 
-						 self.lquat.y,
-						 self.lquat.z,
-						 self.lquat.w])
+						 self.lquat.inverted().x, 
+						 self.lquat.inverted().y,
+						 self.lquat.inverted().z,
+						 self.lquat.inverted().w])
 		ar.tofile(file)
 		
 		if self.parent:

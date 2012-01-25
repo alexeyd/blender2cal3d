@@ -15,15 +15,23 @@ def treat_bone(b, scale, parent, skeleton):
 		return
 
 	name = b.name
+	bone_matrix = b.matrix.copy()
 
-	bone_matrix = b.matrix_local.copy()
-	if b.parent != None:
-		# isolate the parent -> child transform
-		bone_matrix = b.parent.matrix_local.inverted() * bone_matrix
-	bone_trans = bone_matrix.to_translation() * scale
-	b_inv_quat = bone_matrix.to_quaternion().inverted()
-		
-	bone = Bone(skeleton, parent, name, bone_trans, b_inv_quat)
+	bone_head = b.head.copy()
+	bone_tail = b.tail.copy()
+
+	# if bones aren't connected, we need to create an 
+	# extra bone for the animation correctness
+	if bone_head.length != 0:
+		head_bone_loc = scale * bone_head
+		head_bone = Bone(skeleton, parent, name+"_head",
+		                 head_bone_loc, Quaternion((1.0, 0.0, 0.0, 0.0)))
+		parent = head_bone
+
+	bone_trans = scale * (bone_tail - bone_head)
+	bone_quat = bone_matrix.to_quaternion()
+
+	bone = Bone(skeleton, parent, name, bone_trans, bone_quat)
 
 	for child in b.children:
 		treat_bone(child, scale, bone, skeleton)
@@ -32,12 +40,12 @@ def treat_bone(b, scale, parent, skeleton):
 	# purely a hack to make these bones show up in the Cal3D viewer 
 	# for debugging.  These "leaf" bones otherwise have
 	# no effect so they are not added by default.
-	add_leaf_bones = False
+	add_leaf_bones = True
 	if len(b.children) == 0 and add_leaf_bones:
 		tail = scale * (b.tail - b.head)
 		bone = Bone(skeleton, bone, name + "_leaf",
-					b.matrix.inverted() * tail,
-					Quaternion())
+					Vector((0.0, 0.0, 0.0)),
+					Quaternion((1.0, 0.0, 0.0, 0.0)))
 
 def create_cal3d_skeleton(arm_obj, arm_data,
 						  base_rotation,
@@ -50,16 +58,16 @@ def create_cal3d_skeleton(arm_obj, arm_data,
 						  
 	skeleton = Skeleton(arm_obj.name, xml_version)
 	
-	base_matrix =   Matrix.Scale(base_scale, 4) \
-				  * base_rotation.to_4x4() \
-				  * Matrix.Translation(base_translation) \
-				  * arm_obj.matrix_world
+	base_matrix = Matrix.Scale(base_scale, 4)          * \
+	              base_rotation.to_4x4()               * \
+	              Matrix.Translation(base_translation) * \
+	              arm_obj.matrix_world
 
 	(total_translation, total_rotation, total_scale) = base_matrix.decompose()
 	
 	service_root = Bone(skeleton, None, "_root",
-						total_translation.copy(), 
-						total_rotation.inverted())
+	                    total_translation, 
+	                    total_rotation)
 
 	scalematrix = Matrix()
 	scalematrix[0][0] = total_scale.x

@@ -14,7 +14,10 @@ class KeyFrame:
 	def to_cal3d_xml(self):
 		s = "    <KEYFRAME TIME=\"{0}\">\n".format(self.time)
 		s += "      <TRANSLATION>{0} {1} {2}</TRANSLATION>\n".format(self.loc[0], self.loc[1], self.loc[2])
-		s += "      <ROTATION>{0} {1} {2} {3}</ROTATION>\n".format(self.quat.x, self.quat.y, self.quat.z, self.quat.w)
+		s += "      <ROTATION>{0} {1} {2} {3}</ROTATION>\n".format(self.quat.inverted().x, 
+		                                                           self.quat.inverted().y, 
+		                                                           self.quat.inverted().z, 
+		                                                           self.quat.inverted().w)
 		s += "    </KEYFRAME>\n"
 		return s
 
@@ -24,10 +27,10 @@ class KeyFrame:
 						 self.loc[0],
 						 self.loc[1],
 						 self.loc[2],
-						 self.quat.x,
-						 self.quat.y,
-						 self.quat.z,
-						 self.quat.w])
+						 self.quat.inverted().x,
+						 self.quat.inverted().y,
+						 self.quat.inverted().z,
+						 self.quat.inverted().w])
 		ar.tofile(file)
 
 
@@ -60,7 +63,7 @@ class Animation:
 		self.name = name
 		self.xml_version = xml_version
 		self.duration = 0.0
-		self.tracks = [] 
+		self.tracks = []
 
 
 	def to_cal3d_xml(self):
