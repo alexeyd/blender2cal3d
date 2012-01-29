@@ -8,11 +8,12 @@ from . import action_classes
 from .action_classes import *
 
 def get_action_group_fcurve(action_group, data_path, array_index):
-    for fcu in action_group.channels:
-        if fcu.data_path.find(data_path) != -1 and \
-		   fcu.array_index == array_index:
-            return fcu
-    return None
+	for fcu in action_group.channels:
+		if fcu.data_path.find(data_path) != -1 and \
+		    fcu.array_index == array_index:
+			return fcu
+
+	return None
 
 
 def get_keyframes_list(fcu):
@@ -62,54 +63,8 @@ def evaluate_quat(quat_x_fcu, quat_y_fcu, quat_z_fcu, quat_w_fcu, keyframe):
 	return mathutils.Quaternion([quat_x, quat_y, quat_z, quat_w])
 
 
-
-
-
 def track_sort_key(track):
 	return track.bone_index
-
-
-def keyframe_sort_key(keyframe):
-	return keyframe.time
-
-
-def merge_rotations(track, rot_track):
-	for rot_keyframe in rot_track.keyframes:
-		
-		found_keyframe = False
-
-		for keyframe in track.keyframes:
-			if (abs(keyframe.time - rot_keyframe.time) < 1e-5):
-				found_keyframe = True
-				keyframe.quat = rot_keyframe.quat.copy()
-				break
-
-		if not found_keyframe:
-			track.keyframes.append(rot_keyframe)
-
-	track.keyframes.sort(key=keyframe_sort_key)
-
-
-def merge_tracks(loc_tracks, rot_tracks):
-	tracks = []
-	tracks.extend(loc_tracks)
-
-	for rot_track in rot_tracks:
-		found_track = False
-
-		for track in tracks:
-			if track.bone_index == rot_track.bone_index:
-				found_track = True
-				merge_rotations(track, rot_track)
-				break
-
-		if not found_track:
-			tracks.append(rot_track)
-	
-	tracks.sort(key=track_sort_key)
-
-	return tracks
-
 
 
 def create_cal3d_animation(cal3d_skeleton, action, fps, 
@@ -181,12 +136,13 @@ def create_cal3d_animation(cal3d_skeleton, action, fps,
 			dquat = evaluate_quat(quat_x_fcu, quat_y_fcu, 
 			                      quat_z_fcu, quat_w_fcu, keyframe)
 
-			dloc = dloc * base_scale
-			loc = cal3d_bone.loc + dloc
-
 			quat = dquat.copy()
 			quat.rotate(cal3d_bone.quat)
 			quat.normalize()
+
+			dloc.rotate(cal3d_bone.quat)
+			dloc = dloc * base_scale
+			loc = cal3d_bone.loc + dloc
 
 			cal3d_keyframe = KeyFrame(keyframe, loc, quat)
 			cal3d_track.keyframes.append(cal3d_keyframe)

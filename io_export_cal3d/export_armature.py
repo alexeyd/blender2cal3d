@@ -44,27 +44,25 @@ def treat_bone(b, scale, parent, skeleton):
 	if len(b.children) == 0 and add_leaf_bones:
 		tail = scale * (b.tail - b.head)
 		bone = Bone(skeleton, bone, name + "_leaf",
-					Vector((0.0, 0.0, 0.0)),
-					Quaternion((1.0, 0.0, 0.0, 0.0)))
+		            Vector((0.0, 0.0, 0.0)),
+		            Quaternion((1.0, 0.0, 0.0, 0.0)))
+
 
 def create_cal3d_skeleton(arm_obj, arm_data,
 						  base_rotation,
 						  base_translation,
 						  base_scale,
 						  xml_version):
-	
-	prevpose = arm_data.pose_position		  
-	arm_data.pose_position = 'REST'
-						  
+
 	skeleton = Skeleton(arm_obj.name, xml_version)
-	
+
 	base_matrix = Matrix.Scale(base_scale, 4)          * \
 	              base_rotation.to_4x4()               * \
 	              Matrix.Translation(base_translation) * \
 	              arm_obj.matrix_world
 
 	(total_translation, total_rotation, total_scale) = base_matrix.decompose()
-	
+
 	service_root = Bone(skeleton, None, "_root",
 	                    total_translation, 
 	                    total_rotation)
@@ -73,12 +71,10 @@ def create_cal3d_skeleton(arm_obj, arm_data,
 	scalematrix[0][0] = total_scale.x
 	scalematrix[1][1] = total_scale.y
 	scalematrix[2][2] = total_scale.z
-	
+
 	for bone in arm_data.bones.values():
 		if not bone.parent and bone.name[0] != "_":
 			treat_bone(bone, scalematrix, service_root, skeleton)
-			
-	arm_data.pose_position = prevpose
 
 	return skeleton
 

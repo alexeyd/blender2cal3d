@@ -83,9 +83,6 @@ class Bone:
 		self.lloc = -self.translation_absolute
 		self.lloc.rotate(self.lquat)
 
-		for child in self.children:
-			child.calc_bonespace()
-		
  
 
 	def to_cal3d_xml(self):
