@@ -6,8 +6,9 @@ import bpy
 from mathutils import *
 
 class Skeleton:
-	def __init__(self, name, xml_version):
+	def __init__(self, name, anim_scale, xml_version):
 		self.name = name
+		self.anim_scale = anim_scale.copy()
 		self.xml_version = xml_version
 		self.bones = []
 		self.next_bone_id = 0

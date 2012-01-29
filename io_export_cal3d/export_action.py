@@ -67,8 +67,7 @@ def track_sort_key(track):
 	return track.bone_index
 
 
-def create_cal3d_animation(cal3d_skeleton, action, fps, 
-                           base_scale, xml_version):
+def create_cal3d_animation(cal3d_skeleton, action, fps, xml_version):
 	cal3d_animation = Animation(action.name, xml_version)
 
 	initialized_borders = False
@@ -140,8 +139,11 @@ def create_cal3d_animation(cal3d_skeleton, action, fps,
 			quat.rotate(cal3d_bone.quat)
 			quat.normalize()
 
+			dloc.x *= cal3d_skeleton.anim_scale.x
+			dloc.y *= cal3d_skeleton.anim_scale.y
+			dloc.z *= cal3d_skeleton.anim_scale.z
+
 			dloc.rotate(cal3d_bone.quat)
-			dloc = dloc * base_scale
 			loc = cal3d_bone.loc + dloc
 
 			cal3d_keyframe = KeyFrame(keyframe, loc, quat)

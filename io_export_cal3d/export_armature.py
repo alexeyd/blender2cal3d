@@ -54,14 +54,14 @@ def create_cal3d_skeleton(arm_obj, arm_data,
 						  base_scale,
 						  xml_version):
 
-	skeleton = Skeleton(arm_obj.name, xml_version)
-
 	base_matrix = Matrix.Scale(base_scale, 4)          * \
 	              base_rotation.to_4x4()               * \
 	              Matrix.Translation(base_translation) * \
 	              arm_obj.matrix_world
 
 	(total_translation, total_rotation, total_scale) = base_matrix.decompose()
+
+	skeleton = Skeleton(arm_obj.name, total_scale, xml_version)
 
 	service_root = Bone(skeleton, None, "_root",
 	                    total_translation, 

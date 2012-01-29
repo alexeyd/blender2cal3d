@@ -196,8 +196,7 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 			if cal3d_skeleton:
 				for action in bpy.data.actions:
 					cal3d_animation = create_cal3d_animation(cal3d_skeleton,
-															 action, fps,
-															 base_scale, 900)
+					                                         action, fps, 900)
 					if cal3d_animation:
 						cal3d_animations.append(cal3d_animation)
 						
@@ -270,8 +269,10 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 
 		if self.export_cfg:
 			cal3d_cfg_file = open(self.filepath, "wt")
-			cal3d_cfg_file.write("path={0}\n".format("data\\models\\" + os.path.basename(self.filepath[:-4])+ "\\"))
-			cal3d_cfg_file.write("scale=0.01f\n")
+
+			# lolwut?
+			#cal3d_cfg_file.write("path={0}\n".format("data\\models\\" + os.path.basename(self.filepath[:-4])+ "\\"))
+			#cal3d_cfg_file.write("scale=0.01f\n")
 			
 			if cal3d_skeleton:
 				if self.skeleton_binary_bool == 'binary':
