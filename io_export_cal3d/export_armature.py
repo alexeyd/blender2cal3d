@@ -23,12 +23,12 @@ def treat_bone(b, scale, parent, skeleton):
 	# if bones aren't connected, we need to create an 
 	# extra bone for the animation correctness
 	if bone_head.length != 0:
-		head_bone_loc = scale * bone_head
+		head_bone_loc = bone_head * scale
 		head_bone = Bone(skeleton, parent, name+"_head",
 		                 head_bone_loc, Quaternion((1.0, 0.0, 0.0, 0.0)))
 		parent = head_bone
 
-	bone_trans = scale * (bone_tail - bone_head)
+	bone_trans = (bone_tail - bone_head) * scale
 	bone_quat = bone_matrix.to_quaternion()
 
 	bone = Bone(skeleton, parent, name, bone_trans, bone_quat)
@@ -42,7 +42,7 @@ def treat_bone(b, scale, parent, skeleton):
 	# no effect so they are not added by default.
 	add_leaf_bones = True
 	if len(b.children) == 0 and add_leaf_bones:
-		tail = scale * (b.tail - b.head)
+		tail = (b.tail - b.head) * scale
 		bone = Bone(skeleton, bone, name + "_leaf",
 		            Vector((0.0, 0.0, 0.0)),
 		            Quaternion((1.0, 0.0, 0.0, 0.0)))

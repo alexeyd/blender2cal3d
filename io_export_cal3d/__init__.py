@@ -371,7 +371,7 @@ class ExportCal3D(bpy.types.Operator, ExportHelper):
 		self.material_prefix = pre
 		r = super(ExportCal3D, self).invoke(context, event)
 		
-		print(bpy.context.active_operator)
+		#print(bpy.context.active_operator)
 		#preset = bpy.utils.preset_find("default", "operator\\cal3d_model.cfg", display_name=False)
 		#print("preset is " + preset)
 		#orig = context["active_operator"]
