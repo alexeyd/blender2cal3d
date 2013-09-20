@@ -95,8 +95,6 @@ def create_cal3d_mesh(scene, mesh_obj,
 
 	cal3d_mesh = Mesh(mesh_obj.name, xml_version)
 
-	faces = mesh_data.faces
-
 	# currently 1 material per mesh
 
 	blender_material = None
@@ -114,30 +112,22 @@ def create_cal3d_mesh(scene, mesh_obj,
 
 	duplicate_index = len(mesh_data.vertices)
 
-	for face in mesh_data.faces:
+	for polygon in mesh_data.polygons:
 		cal3d_vertex1 = None
 		cal3d_vertex2 = None
 		cal3d_vertex3 = None
 		cal3d_vertex4 = None
 
-		for vertex_index in face.vertices:
+		for loop_index, vertex_index in enumerate(polygon.vertices):
 			duplicate = False
 			cal3d_vertex = None
 			uvs = []
 
-			for uv_texture in mesh_data.uv_textures:
-				if not cal3d_vertex1:
-					uvs.append(uv_texture.data[face.index].uv1.copy())
-				elif not cal3d_vertex2:
-					uvs.append(uv_texture.data[face.index].uv2.copy())
-				elif not cal3d_vertex3:
-					uvs.append(uv_texture.data[face.index].uv3.copy())
-				elif not cal3d_vertex4:
-					uvs.append(uv_texture.data[face.index].uv4.copy())
-
+			for uv_layer in mesh_data.uv_layers:
+				uvs.append(uv_layer.data[polygon.loop_indices[loop_index]].uv)
+					
 			for uv in uvs:
 				uv[1] = 1.0 - uv[1]
-
 			
 			for cal3d_vertex_iter in cal3d_submesh.vertices:
 				if cal3d_vertex_iter.index == vertex_index:
@@ -209,4 +199,3 @@ def create_cal3d_mesh(scene, mesh_obj,
 	bpy.data.meshes.remove(mesh_data)
 
 	return cal3d_mesh
-
